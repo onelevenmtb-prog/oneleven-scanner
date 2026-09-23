@@ -69,6 +69,20 @@ function setLast(t,cls){
   e.textContent=t;
 }
 
+var audioCtx=null;
+function beepQr(){
+  try{
+    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==='suspended') audioCtx.resume();
+    var o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type='sine'; o.frequency.value=1050;
+    g.gain.setValueAtTime(0.12,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.09);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime+0.09);
+  }catch(e){}
+}
+
 function render(){
   document.getElementById('count').textContent=items.length;
   var h='';
@@ -126,6 +140,7 @@ function onResolved(a){
   busy=false;
   if(!a||!a.ok){setLast(a&&a.messaggio?a.messaggio:'QR non riconosciuto','error');return;}
   if(already(a.qr)){setLast('QR '+a.qr+' già presente','error');return;}
+  beepQr();
   if(a.gruppo==='CLUB') addItem(a,'PRESENZA CLUB');
   else if(a.gruppo==='PL') choosePL(a);
   else setLast('Allievo non gestito dallo scanner rapido','error');
@@ -197,11 +212,12 @@ function doneBatch(r){
   showModalHtml('<div style="text-align:center;font-size:56px;line-height:1;margin:4px 0 18px">✓</div><h2>REGISTRAZIONE COMPLETATA</h2><p style="text-align:center;font-size:27px;line-height:1.4">Registrati: <b>'+n+'</b><br>Già presenti: <b>'+d+'</b></p><button id="newScan" class="choice" type="button">NUOVA SCANSIONE</button><button id="closeScanner" class="choice secondary" type="button">CHIUDI SCANNER</button>');
   document.getElementById('newScan').addEventListener('click',function(){closeModal();setLast('Pronto alla scansione');});
   document.getElementById('closeScanner').addEventListener('click',function(){
-    if (window.history.length > 1) {
-      window.history.back();
-    } else {
-      window.location.href = 'about:blank';
-    }
+    try{
+      if(scannerStarted && scanner){
+        scanner.stop().catch(function(){});
+      }
+    }catch(e){}
+    document.body.innerHTML='<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;background:#f4f4f4;font-family:Arial,sans-serif"><div style="width:100%;max-width:560px;background:#fff;border-radius:18px;padding:34px 22px;text-align:center;box-sizing:border-box"><div style="font-size:56px;line-height:1;margin-bottom:18px">✓</div><h1 style="font-size:32px;margin:0 0 14px">SCANNER CHIUSO</h1><p style="font-size:21px;line-height:1.4;margin:0">La registrazione è stata completata.<br>Puoi chiudere questa schermata.</p></div></div>';
   });
 }
 
