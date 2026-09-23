@@ -194,8 +194,15 @@ function doneBatch(r){
   if(!r||!r.ok){closeModal();setLast(r&&r.messaggio?r.messaggio:'Errore registrazione','error');return;}
   var n=r.registrati||0,d=r.duplicati||0;
   items.splice(0,items.length);render();
-  showModalHtml('<div style="text-align:center;font-size:67px;line-height:1;margin:5px 0 22px">✓</div><h2>REGISTRAZIONE COMPLETATA</h2><p style="text-align:center;font-size:32px;line-height:1.4">Registrati: <b>'+n+'</b><br>Già presenti: <b>'+d+'</b></p><button id="newScan" class="choice" type="button">NUOVA SCANSIONE</button>');
+  showModalHtml('<div style="text-align:center;font-size:67px;line-height:1;margin:5px 0 22px">✓</div><h2>REGISTRAZIONE COMPLETATA</h2><p style="text-align:center;font-size:32px;line-height:1.4">Registrati: <b>'+n+'</b><br>Già presenti: <b>'+d+'</b></p><button id="newScan" class="choice" type="button">NUOVA SCANSIONE</button><button id="closeScanner" class="choice secondary" type="button">CHIUDI SCANNER</button>');
   document.getElementById('newScan').addEventListener('click',function(){closeModal();setLast('Pronto alla scansione');});
+  document.getElementById('closeScanner').addEventListener('click',function(){
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      window.location.href = 'about:blank';
+    }
+  });
 }
 
 function startCamera(){
