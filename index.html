@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport"
+        content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+
+  <title>Scanner Oneleven MTB</title>
+
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f4f4f4;
+      color: #111;
+    }
+
+    .wrap {
+      max-width: 650px;
+      margin: auto;
+      padding: 14px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 28px;
+      margin-bottom: 4px;
+    }
+
+    .teacher {
+      text-align: center;
+      font-size: 19px;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+
+    #reader {
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      min-height: 250px;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 15px;
+      padding: 17px;
+      border: 0;
+      border-radius: 10px;
+      background: #111;
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    #status {
+      background: white;
+      border-radius: 10px;
+      padding: 15px;
+      margin-top: 15px;
+      text-align: center;
+      font-size: 17px;
+      font-weight: bold;
+    }
+
+    .ok {
+      color: #087a2f;
+    }
+
+    .error {
+      color: #b00020;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="wrap">
+
+  <h1>ONELEVEN MTB</h1>
+  <div class="teacher">Test Scanner Dario</div>
+
+  <div id="reader"></div>
+
+  <button id="startBtn" type="button">
+    ATTIVA FOTOCAMERA
+  </button>
+
+  <div id="status">
+    Premi ATTIVA FOTOCAMERA
+  </div>
+
+</div>
+
+<script>
+
+var scanner = null;
+
+function messaggio(testo, classe) {
+  var e = document.getElementById("status");
+  e.textContent = testo;
+  e.className = classe || "";
+}
+
+document.getElementById("startBtn").addEventListener("click", function () {
+
+  var btn = this;
+
+  btn.disabled = true;
+  btn.textContent = "APERTURA FOTOCAMERA...";
+
+  messaggio("Richiesta accesso alla fotocamera...");
+
+  try {
+
+    scanner = new Html5Qrcode("reader");
+
+    scanner.start(
+      { facingMode: "environment" },
+      {
+        fps: 10,
+        qrbox: { width: 240, height: 240 }
+      },
+
+      function (testoQR) {
+        messaggio("QR LETTO: " + testoQR, "ok");
+      },
+
+      function () {
+        // Nessun QR trovato nel fotogramma.
+      }
+
+    ).then(function () {
+
+      btn.style.display = "none";
+
+      messaggio(
+        "FOTOCAMERA ATTIVA - INQUADRA UN QR",
+        "ok"
+      );
+
+    }).catch(function (errore) {
+
+      btn.disabled = false;
+      btn.textContent = "RIPROVA FOTOCAMERA";
+
+      var dettaglio =
+        errore && errore.message
+          ? errore.message
+          : String(errore);
+
+      messaggio(
+        "ERRORE FOTOCAMERA: " + dettaglio,
+        "error"
+      );
+
+    });
+
+  } catch (errore) {
+
+    btn.disabled = false;
+    btn.textContent = "RIPROVA FOTOCAMERA";
+
+    messaggio(
+      "ERRORE: " + errore,
+      "error"
+    );
+  }
+
+});
+
+</script>
+
+</body>
+</html>
