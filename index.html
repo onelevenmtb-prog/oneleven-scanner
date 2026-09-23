@@ -8,25 +8,25 @@
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     body{font-family:Arial,sans-serif;margin:0;background:#f4f4f4;color:#111;-webkit-text-size-adjust:100%}
-    .wrap{max-width:650px;margin:auto;padding:14px}
-    h1{font-size:27px;text-align:center;margin:8px 0 2px}
-    .teacher{text-align:center;font-size:18px;font-weight:bold;margin-bottom:12px}
+    .wrap{max-width:650px;margin:auto;padding:20px 16px}
+    h1{font-size:36px;text-align:center;margin:10px 0 4px;font-weight:800}
+    .teacher{text-align:center;font-size:24px;font-weight:bold;margin-bottom:20px}
     #reader{display:none;background:#000;border-radius:12px;overflow:hidden}
     #reader video{width:100%!important;height:auto!important;display:block!important}
-    .bar{display:flex;gap:8px;margin:12px 0} .bar button{flex:1}
-    button{font:inherit;font-weight:bold;border:0;border-radius:10px;padding:15px 10px;background:#111;color:#fff;-webkit-appearance:none;appearance:none;touch-action:manipulation}
+    .bar{display:flex;gap:12px;margin:16px 0} .bar button{flex:1}
+    button{font:inherit;font-size:20px;font-weight:bold;border:0;border-radius:14px;padding:20px 12px;min-height:66px;background:#111;color:#fff;-webkit-appearance:none;appearance:none;touch-action:manipulation}
     button.secondary{background:#fff;color:#111;border:2px solid #222}
     button:disabled{opacity:.55}
-    .cameraStart{width:100%;margin:0 0 10px}
-    .status{background:#fff;border-radius:10px;padding:12px;margin:10px 0;text-align:center}
-    .count{font-size:21px;font-weight:bold} .last{font-size:17px;margin-top:5px}
-    #list{background:#fff;border-radius:10px;padding:6px 12px;margin-top:10px}
-    .row{padding:10px 0;border-bottom:1px solid #ddd;min-height:38px} .row:last-child{border:0}
+    .cameraStart{width:100%;margin:0 0 14px 0;font-size:22px;min-height:72px}
+    .status{background:#fff;border-radius:14px;padding:20px 14px;margin:14px 0;text-align:center}
+    .count{font-size:28px;font-weight:bold}.last{font-size:22px;margin-top:8px}
+    #list{background:#fff;border-radius:14px;padding:8px 14px;margin-top:14px}
+    .row{padding:15px 0;border-bottom:1px solid #ddd;min-height:46px;font-size:19px}.row:last-child{border:0}
     .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:20;align-items:center;justify-content:center;padding:18px}
-    .box{background:#fff;border-radius:14px;padding:18px;width:100%;max-width:520px;max-height:88vh;overflow:auto}
-    .box h2{text-align:center} .choice{width:100%;margin:7px 0} .remove{float:right;background:#b00020;padding:7px 10px}
+    .box{background:#fff;border-radius:18px;padding:24px 20px;width:100%;max-width:560px;max-height:88vh;overflow:auto;font-size:20px}
+    .box h2{text-align:center;font-size:30px;margin:8px 0 20px}.choice{width:100%;margin:10px 0;font-size:20px}.remove{float:right;background:#b00020;padding:8px 12px;min-height:42px;font-size:17px}
     .error{color:#b00020;font-weight:bold} .ok{color:#087a2f;font-weight:bold}
-    input{width:100%;box-sizing:border-box;font-size:24px;padding:12px;text-align:center;border:2px solid #555;border-radius:8px;-webkit-appearance:none;appearance:none}
+    input{width:100%;box-sizing:border-box;font-size:30px;padding:16px;text-align:center;border:2px solid #555;border-radius:10px;-webkit-appearance:none;appearance:none}
   </style>
 </head>
 <body>
@@ -194,7 +194,7 @@ function doneBatch(r){
   if(!r||!r.ok){closeModal();setLast(r&&r.messaggio?r.messaggio:'Errore registrazione','error');return;}
   var n=r.registrati||0,d=r.duplicati||0;
   items.splice(0,items.length);render();
-  showModalHtml('<h2>REGISTRAZIONE COMPLETATA</h2><p style="text-align:center;font-size:20px">Registrati: <b>'+n+'</b><br>Già presenti: <b>'+d+'</b></p><button id="newScan" class="choice" type="button">NUOVA SCANSIONE</button>');
+  showModalHtml('<div style="text-align:center;font-size:54px;line-height:1;margin:4px 0 18px">✓</div><h2>REGISTRAZIONE COMPLETATA</h2><p style="text-align:center;font-size:26px;line-height:1.4">Registrati: <b>'+n+'</b><br>Già presenti: <b>'+d+'</b></p><button id="newScan" class="choice" type="button">NUOVA SCANSIONE</button>');
   document.getElementById('newScan').addEventListener('click',function(){closeModal();setLast('Pronto alla scansione');});
 }
 
