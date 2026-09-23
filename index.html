@@ -215,8 +215,8 @@ function startCamera(){
     scanner=new Html5Qrcode('reader');
     scanner.start(
       {facingMode:'environment'},
-      {fps:10,qrbox:{width:240,height:240},aspectRatio:1.0},
-      function(txt){handleQr(txt);},
+      {fps:20,qrbox:{width:300,height:300},aspectRatio:1.0,disableFlip:true},
+      function(txt){if(!busy)handleQr(txt);},
       function(){}
     ).then(function(){
       scannerStarted=true;btn.style.display='none';setLast('Fotocamera attiva - inquadra un QR','ok');
