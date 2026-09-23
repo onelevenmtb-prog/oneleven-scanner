@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>Scanner Dario - Oneleven MTB</title>
+  <title>Scanner Oneleven MTB</title>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     body{font-family:Arial,sans-serif;margin:0;background:#f4f4f4;color:#111;-webkit-text-size-adjust:100%}
@@ -32,7 +32,7 @@
 <body>
 <div class="wrap">
   <h1>ONELEVEN MTB</h1>
-  <div class="teacher">Scanner Dario</div>
+  <div class="teacher" id="teacherName">Scanner Oneleven</div>
   <button id="startCameraBtn" class="cameraStart" type="button">ATTIVA FOTOCAMERA</button>
   <div id="reader"></div>
   <div class="bar">
@@ -149,6 +149,10 @@ function onFail(e){busy=false;setLast('Errore: '+(e&&e.message?e.message:e),'err
 function onResolved(a){
   busy=false;
   if(!a||!a.ok){setLast(a&&a.messaggio?a.messaggio:'QR non riconosciuto','error');return;}
+  if(a.maestro){
+    document.getElementById('teacherName').textContent='Scanner '+a.maestro;
+    document.title='Scanner '+a.maestro+' - Oneleven MTB';
+  }
   if(already(a.qr)){setLast('QR '+a.qr+' già presente','error');return;}
   if(a.gruppo==='CLUB') addItem(a,'PRESENZA CLUB');
   else if(a.gruppo==='PL') choosePL(a);
