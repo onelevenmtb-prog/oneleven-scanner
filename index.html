@@ -2,176 +2,234 @@
 <html lang="it">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport"
-        content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-
-  <title>Scanner Oneleven MTB</title>
-
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Scanner Dario - Oneleven MTB</title>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      background: #f4f4f4;
-      color: #111;
-    }
-
-    .wrap {
-      max-width: 650px;
-      margin: auto;
-      padding: 14px;
-    }
-
-    h1 {
-      text-align: center;
-      font-size: 28px;
-      margin-bottom: 4px;
-    }
-
-    .teacher {
-      text-align: center;
-      font-size: 19px;
-      font-weight: bold;
-      margin-bottom: 18px;
-    }
-
-    #reader {
-      background: #000;
-      border-radius: 12px;
-      overflow: hidden;
-      min-height: 250px;
-    }
-
-    button {
-      width: 100%;
-      margin-top: 15px;
-      padding: 17px;
-      border: 0;
-      border-radius: 10px;
-      background: #111;
-      color: white;
-      font-size: 18px;
-      font-weight: bold;
-    }
-
-    #status {
-      background: white;
-      border-radius: 10px;
-      padding: 15px;
-      margin-top: 15px;
-      text-align: center;
-      font-size: 17px;
-      font-weight: bold;
-    }
-
-    .ok {
-      color: #087a2f;
-    }
-
-    .error {
-      color: #b00020;
-    }
+    body{font-family:Arial,sans-serif;margin:0;background:#f4f4f4;color:#111;-webkit-text-size-adjust:100%}
+    .wrap{max-width:650px;margin:auto;padding:14px}
+    h1{font-size:27px;text-align:center;margin:8px 0 2px}
+    .teacher{text-align:center;font-size:18px;font-weight:bold;margin-bottom:12px}
+    #reader{display:none;background:#000;border-radius:12px;overflow:hidden}
+    #reader video{width:100%!important;height:auto!important;display:block!important}
+    .bar{display:flex;gap:8px;margin:12px 0} .bar button{flex:1}
+    button{font:inherit;font-weight:bold;border:0;border-radius:10px;padding:15px 10px;background:#111;color:#fff;-webkit-appearance:none;appearance:none;touch-action:manipulation}
+    button.secondary{background:#fff;color:#111;border:2px solid #222}
+    button:disabled{opacity:.55}
+    .cameraStart{width:100%;margin:0 0 10px}
+    .status{background:#fff;border-radius:10px;padding:12px;margin:10px 0;text-align:center}
+    .count{font-size:21px;font-weight:bold} .last{font-size:17px;margin-top:5px}
+    #list{background:#fff;border-radius:10px;padding:6px 12px;margin-top:10px}
+    .row{padding:10px 0;border-bottom:1px solid #ddd;min-height:38px} .row:last-child{border:0}
+    .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:20;align-items:center;justify-content:center;padding:18px}
+    .box{background:#fff;border-radius:14px;padding:18px;width:100%;max-width:520px;max-height:88vh;overflow:auto}
+    .box h2{text-align:center} .choice{width:100%;margin:7px 0} .remove{float:right;background:#b00020;padding:7px 10px}
+    .error{color:#b00020;font-weight:bold} .ok{color:#087a2f;font-weight:bold}
+    input{width:100%;box-sizing:border-box;font-size:24px;padding:12px;text-align:center;border:2px solid #555;border-radius:8px;-webkit-appearance:none;appearance:none}
   </style>
 </head>
-
 <body>
-
 <div class="wrap">
-
   <h1>ONELEVEN MTB</h1>
-  <div class="teacher">Test Scanner Dario</div>
-
+  <div class="teacher">Scanner Dario</div>
+  <button id="startCameraBtn" class="cameraStart" type="button">ATTIVA FOTOCAMERA</button>
   <div id="reader"></div>
-
-  <button id="startBtn" type="button">
-    ATTIVA FOTOCAMERA
-  </button>
-
-  <div id="status">
-    Premi ATTIVA FOTOCAMERA
+  <div class="bar">
+    <button id="manualBtn" class="secondary" type="button">INSERISCI QR</button>
+    <button id="finishBtn" type="button">FINE SCANSIONE</button>
   </div>
-
+  <div class="status">
+    <div class="count">Scansionati: <span id="count">0</span></div>
+    <div class="last" id="last">Pronto alla scansione</div>
+  </div>
+  <div id="list"></div>
 </div>
+<div class="overlay" id="modal"><div class="box" id="modalBox"></div></div>
 
 <script>
-
+var API_URL = 'https://script.google.com/macros/s/AKfycbypRKLkU0RPV8I9WrHV6N24bDnecyAdB0p1hZT4VrGNKDBH0bVspKZg750s_HwNjxs/exec';
+var TOKEN = new URLSearchParams(location.search).get('token') || '';
+var items = [];
+var busy = false;
 var scanner = null;
+var scannerStarted = false;
+var callbackSeq = 0;
+var tipiPL = ['PL IND','PL COLL CLUB','PL FRIEND','PL DOMENICA','PL IND OUT','PL COLL OUT'];
 
-function messaggio(testo, classe) {
-  var e = document.getElementById("status");
-  e.textContent = testo;
-  e.className = classe || "";
+function esc(v){
+  return String(v || '').replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
 }
 
-document.getElementById("startBtn").addEventListener("click", function () {
+function setLast(t,cls){
+  var e=document.getElementById('last');
+  e.className='last '+(cls||'');
+  e.textContent=t;
+}
 
-  var btn = this;
+function render(){
+  document.getElementById('count').textContent=items.length;
+  var h='';
+  for(var i=0;i<items.length;i++){
+    var x=items[i];
+    h+='<div class="row"><b>'+esc(x.nome+' '+x.cognome)+'</b><br>'+esc(x.tipo)+' <button class="remove" type="button" data-remove="'+i+'">X</button></div>';
+  }
+  document.getElementById('list').innerHTML=h;
+  var buttons=document.querySelectorAll('[data-remove]');
+  for(var j=0;j<buttons.length;j++){
+    buttons[j].addEventListener('click',function(){removeItem(Number(this.getAttribute('data-remove')));});
+  }
+}
 
-  btn.disabled = true;
-  btn.textContent = "APERTURA FOTOCAMERA...";
+function removeItem(i){items.splice(i,1);render();}
+function already(qr){for(var i=0;i<items.length;i++) if(items[i].qr===qr) return true; return false;}
 
-  messaggio("Richiesta accesso alla fotocamera...");
+function jsonp(params, success, failure){
+  if(!TOKEN){failure(new Error('Link scanner non autorizzato'));return;}
+  callbackSeq++;
+  var cb='onelevenCb'+Date.now()+'_'+callbackSeq;
+  var s=document.createElement('script');
+  var timer=setTimeout(function(){cleanup();failure(new Error('Tempo di risposta scaduto'));},20000);
 
-  try {
-
-    scanner = new Html5Qrcode("reader");
-
-    scanner.start(
-      { facingMode: "environment" },
-      {
-        fps: 10,
-        qrbox: { width: 240, height: 240 }
-      },
-
-      function (testoQR) {
-        messaggio("QR LETTO: " + testoQR, "ok");
-      },
-
-      function () {
-        // Nessun QR trovato nel fotogramma.
-      }
-
-    ).then(function () {
-
-      btn.style.display = "none";
-
-      messaggio(
-        "FOTOCAMERA ATTIVA - INQUADRA UN QR",
-        "ok"
-      );
-
-    }).catch(function (errore) {
-
-      btn.disabled = false;
-      btn.textContent = "RIPROVA FOTOCAMERA";
-
-      var dettaglio =
-        errore && errore.message
-          ? errore.message
-          : String(errore);
-
-      messaggio(
-        "ERRORE FOTOCAMERA: " + dettaglio,
-        "error"
-      );
-
-    });
-
-  } catch (errore) {
-
-    btn.disabled = false;
-    btn.textContent = "RIPROVA FOTOCAMERA";
-
-    messaggio(
-      "ERRORE: " + errore,
-      "error"
-    );
+  function cleanup(){
+    clearTimeout(timer);
+    try{delete window[cb];}catch(e){window[cb]=undefined;}
+    if(s.parentNode)s.parentNode.removeChild(s);
   }
 
-});
+  window[cb]=function(data){cleanup();success(data);};
+  params.token=TOKEN;
+  params.callback=cb;
 
+  var q=[];
+  Object.keys(params).forEach(function(k){q.push(encodeURIComponent(k)+'='+encodeURIComponent(params[k]));});
+  s.src=API_URL+'?'+q.join('&');
+  s.onerror=function(){cleanup();failure(new Error('Collegamento al gestionale non riuscito'));};
+  document.body.appendChild(s);
+}
+
+function handleQr(qr){
+  qr=String(qr||'').trim();
+  if(!qr){setLast('Inserisci un codice QR valido','error');return;}
+  if(busy)return;
+  if(already(qr)){setLast('QR '+qr+' già presente','error');return;}
+  busy=true;
+  setLast('Lettura '+qr+'...');
+  jsonp({azione:'scannerRisolvi',qr:qr},onResolved,onFail);
+}
+
+function onFail(e){busy=false;setLast('Errore: '+(e&&e.message?e.message:e),'error');}
+
+function onResolved(a){
+  busy=false;
+  if(!a||!a.ok){setLast(a&&a.messaggio?a.messaggio:'QR non riconosciuto','error');return;}
+  if(already(a.qr)){setLast('QR '+a.qr+' già presente','error');return;}
+  if(a.gruppo==='CLUB') addItem(a,'PRESENZA CLUB');
+  else if(a.gruppo==='PL') choosePL(a);
+  else setLast('Allievo non gestito dallo scanner rapido','error');
+}
+
+function addItem(a,tipo){
+  items.push({qr:a.qr,id:a.id,nome:a.nome,cognome:a.cognome,destinazione:a.destinazione,tipo:tipo});
+  render(); closeModal(); setLast(a.nome+' '+a.cognome+' ✓','ok');
+}
+
+function choosePL(a){
+  var box=document.getElementById('modalBox');
+  box.innerHTML='<h2>'+esc(a.nome+' '+a.cognome)+'</h2><p style="text-align:center"><b>SCEGLI IL TIPO DI LEZIONE</b></p>';
+  for(var i=0;i<tipiPL.length;i++){
+    (function(tipo){
+      var b=document.createElement('button'); b.type='button'; b.className='choice'; b.textContent=tipo;
+      b.addEventListener('click',function(){addItem(a,tipo);}); box.appendChild(b);
+    })(tipiPL[i]);
+  }
+  var ann=document.createElement('button'); ann.type='button'; ann.className='choice secondary'; ann.textContent='ANNULLA';
+  ann.addEventListener('click',closeModal); box.appendChild(ann);
+  document.getElementById('modal').style.display='flex';
+}
+
+function showModalHtml(h){document.getElementById('modalBox').innerHTML=h;document.getElementById('modal').style.display='flex';}
+function closeModal(){document.getElementById('modal').style.display='none';}
+
+function manualQr(){
+  showModalHtml('<h2>Inserisci QR</h2><input id="manual" inputmode="numeric" autocomplete="off" placeholder="0001"><button id="manualOk" class="choice" type="button">OK</button><button id="manualCancel" class="choice secondary" type="button">ANNULLA</button>');
+  document.getElementById('manualOk').addEventListener('click',submitManual);
+  document.getElementById('manualCancel').addEventListener('click',closeModal);
+  document.getElementById('manual').addEventListener('keydown',function(e){if(e.key==='Enter')submitManual();});
+  setTimeout(function(){var m=document.getElementById('manual');if(m)m.focus();},150);
+}
+function submitManual(){var m=document.getElementById('manual');var v=m?m.value:'';closeModal();handleQr(v);}
+
+function finishScan(){
+  if(!items.length){setLast('Nessun allievo scansionato','error');return;}
+  var box=document.getElementById('modalBox');
+  box.innerHTML='<h2>RIEPILOGO</h2><p style="text-align:center"><b>Totale: '+items.length+'</b></p>';
+  for(var i=0;i<items.length;i++){
+    (function(indice){
+      var x=items[indice]; var r=document.createElement('div'); r.className='row';
+      r.innerHTML='<b>'+esc(x.nome+' '+x.cognome)+'</b><br>'+esc(x.tipo)+' ';
+      var b=document.createElement('button'); b.type='button'; b.className='remove'; b.textContent='X';
+      b.addEventListener('click',function(){removeReview(indice);}); r.appendChild(b); box.appendChild(r);
+    })(i);
+  }
+  var save=document.createElement('button'); save.id='saveBtn'; save.type='button'; save.className='choice'; save.textContent='REGISTRA LEZIONE'; save.addEventListener('click',saveBatch); box.appendChild(save);
+  var back=document.createElement('button'); back.type='button'; back.className='choice secondary'; back.textContent='TORNA ALLA SCANSIONE'; back.addEventListener('click',closeModal); box.appendChild(back);
+  document.getElementById('modal').style.display='flex';
+}
+function removeReview(i){items.splice(i,1);render();if(items.length)finishScan();else closeModal();}
+
+function saveBatch(){
+  var b=document.getElementById('saveBtn');
+  if(b){b.disabled=true;b.textContent='REGISTRAZIONE...';}
+  jsonp(
+    {azione:'scannerRegistra',elementi:JSON.stringify(items)},
+    doneBatch,
+    onBatchFail
+  );
+}
+function onBatchFail(e){closeModal();setLast('Errore registrazione: '+(e&&e.message?e.message:e),'error');}
+function doneBatch(r){
+  if(!r||!r.ok){closeModal();setLast(r&&r.messaggio?r.messaggio:'Errore registrazione','error');return;}
+  var n=r.registrati||0,d=r.duplicati||0;
+  items.splice(0,items.length);render();
+  showModalHtml('<h2>REGISTRAZIONE COMPLETATA</h2><p style="text-align:center;font-size:20px">Registrati: <b>'+n+'</b><br>Già presenti: <b>'+d+'</b></p><button id="newScan" class="choice" type="button">NUOVA SCANSIONE</button>');
+  document.getElementById('newScan').addEventListener('click',function(){closeModal();setLast('Pronto alla scansione');});
+}
+
+function startCamera(){
+  if(scannerStarted){setLast('Fotocamera già attiva','ok');return;}
+  if(typeof Html5Qrcode==='undefined'){setLast('Lettore QR non caricato. Usa INSERISCI QR.','error');return;}
+  var btn=document.getElementById('startCameraBtn');
+  btn.disabled=true;btn.textContent='APERTURA FOTOCAMERA...';setLast('Richiesta accesso alla fotocamera...');
+  document.getElementById('reader').style.display='block';
+  try{
+    scanner=new Html5Qrcode('reader');
+    scanner.start(
+      {facingMode:'environment'},
+      {fps:10,qrbox:{width:240,height:240},aspectRatio:1.0},
+      function(txt){handleQr(txt);},
+      function(){}
+    ).then(function(){
+      scannerStarted=true;btn.style.display='none';setLast('Fotocamera attiva - inquadra un QR','ok');
+    }).catch(function(err){
+      document.getElementById('reader').style.display='none';
+      btn.disabled=false;btn.textContent='RIPROVA FOTOCAMERA';
+      setLast('ERRORE FOTOCAMERA: '+(err&&err.message?err.message:String(err)),'error');
+    });
+  }catch(err){
+    document.getElementById('reader').style.display='none';
+    btn.disabled=false;btn.textContent='RIPROVA FOTOCAMERA';
+    setLast('Errore fotocamera. Usa INSERISCI QR.','error');
+  }
+}
+
+document.getElementById('startCameraBtn').addEventListener('click',startCamera);
+document.getElementById('manualBtn').addEventListener('click',manualQr);
+document.getElementById('finishBtn').addEventListener('click',finishScan);
+render();
+if(!TOKEN)setLast('Apri lo scanner dal link personale Oneleven','error');
 </script>
-
 </body>
 </html>
