@@ -70,16 +70,25 @@ function setLast(t,cls){
 }
 
 var audioCtx=null;
-function beepQr(){
+function unlockAudio(){
   try{
     if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
     if(audioCtx.state==='suspended') audioCtx.resume();
+    var b=audioCtx.createBuffer(1,1,22050);
+    var s=audioCtx.createBufferSource();
+    s.buffer=b;s.connect(audioCtx.destination);s.start(0);
+  }catch(e){}
+}
+function beepQr(){
+  try{
+    if(!audioCtx) return;
+    if(audioCtx.state==='suspended') audioCtx.resume();
     var o=audioCtx.createOscillator(), g=audioCtx.createGain();
-    o.type='sine'; o.frequency.value=1050;
-    g.gain.setValueAtTime(0.12,audioCtx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.09);
-    o.connect(g); g.connect(audioCtx.destination);
-    o.start(); o.stop(audioCtx.currentTime+0.09);
+    o.type='sine';o.frequency.value=1150;
+    g.gain.setValueAtTime(0.22,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.12);
+    o.connect(g);g.connect(audioCtx.destination);
+    o.start();o.stop(audioCtx.currentTime+0.12);
   }catch(e){}
 }
 
@@ -130,7 +139,8 @@ function handleQr(qr){
   if(busy)return;
   if(already(qr)){setLast('QR '+qr+' già presente','error');return;}
   busy=true;
-  setLast('Lettura '+qr+'...');
+  beepQr();
+  setLast('QR '+qr+' letto ✓','ok');
   jsonp({azione:'scannerRisolvi',qr:qr},onResolved,onFail);
 }
 
@@ -140,7 +150,6 @@ function onResolved(a){
   busy=false;
   if(!a||!a.ok){setLast(a&&a.messaggio?a.messaggio:'QR non riconosciuto','error');return;}
   if(already(a.qr)){setLast('QR '+a.qr+' già presente','error');return;}
-  beepQr();
   if(a.gruppo==='CLUB') addItem(a,'PRESENZA CLUB');
   else if(a.gruppo==='PL') choosePL(a);
   else setLast('Allievo non gestito dallo scanner rapido','error');
@@ -222,6 +231,7 @@ function doneBatch(r){
 }
 
 function startCamera(){
+  unlockAudio();
   if(scannerStarted){setLast('Fotocamera già attiva','ok');return;}
   if(typeof Html5Qrcode==='undefined'){setLast('Lettore QR non caricato. Usa INSERISCI QR.','error');return;}
   var btn=document.getElementById('startCameraBtn');
