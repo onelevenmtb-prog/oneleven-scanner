@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <title>Scanner Oneleven MTB</title>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
@@ -79,6 +80,7 @@ function unlockAudio(){
     s.buffer=b;s.connect(audioCtx.destination);s.start(0);
   }catch(e){}
 }
+
 function beepQr(){
   try{
     if(!audioCtx) return;
@@ -188,6 +190,7 @@ function manualQr(){
   document.getElementById('manual').addEventListener('keydown',function(e){if(e.key==='Enter')submitManual();});
   setTimeout(function(){var m=document.getElementById('manual');if(m)m.focus();},150);
 }
+
 function submitManual(){var m=document.getElementById('manual');var v=m?m.value:'';closeModal();handleQr(v);}
 
 function finishScan(){
@@ -206,6 +209,7 @@ function finishScan(){
   var back=document.createElement('button'); back.type='button'; back.className='choice secondary'; back.textContent='TORNA ALLA SCANSIONE'; back.addEventListener('click',closeModal); box.appendChild(back);
   document.getElementById('modal').style.display='flex';
 }
+
 function removeReview(i){items.splice(i,1);render();if(items.length)finishScan();else closeModal();}
 
 function saveBatch(){
@@ -217,7 +221,9 @@ function saveBatch(){
     onBatchFail
   );
 }
+
 function onBatchFail(e){closeModal();setLast('Errore registrazione: '+(e&&e.message?e.message:e),'error');}
+
 function doneBatch(r){
   if(!r||!r.ok){closeModal();setLast(r&&r.messaggio?r.messaggio:'Errore registrazione','error');return;}
   var n=r.registrati||0,d=r.duplicati||0;
