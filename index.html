@@ -694,7 +694,7 @@ if(!TOKEN){
   document.getElementById('manualCognome').value='';
   document.getElementById('manualTelefono').value='';
 });
-  document.getElementById('manualRegisterBtn').addEventListener('click', function(){
+document.getElementById('manualRegisterBtn').addEventListener('click', function(){
   const nome = document.getElementById('manualNome').value.trim();
   const cognome = document.getElementById('manualCognome').value.trim();
   const telefono = document.getElementById('manualTelefono').value.trim();
@@ -704,12 +704,31 @@ if(!TOKEN){
     return;
   }
 
-  alert(
-    selectedActivity + '\n' +
-    'Orario: ' + selectedTime + '\n' +
-    'Nome: ' + nome + '\n' +
-    'Cognome: ' + cognome + '\n' +
-    'Telefono: ' + telefono
+  jsonp(
+    {
+      azione:'scannerRegistraManuale',
+      tipo:selectedActivity,
+      nome:nome,
+      cognome:cognome,
+      telefono:telefono,
+      orario:selectedTime
+    },
+    function(r){
+      if(r && r.ok){
+        alert(
+          'TEST BACKEND OK\n' +
+          r.tipo + ' — ' + r.orario + '\n' +
+          r.nome + ' ' + r.cognome + '\n' +
+          'Telefono: ' + r.telefono + '\n' +
+          'Maestro: ' + r.maestro
+        );
+      }else{
+        alert((r && r.messaggio) ? r.messaggio : 'Errore registrazione');
+      }
+    },
+    function(){
+      alert('Errore di collegamento');
+    }
   );
 });
 </script>
