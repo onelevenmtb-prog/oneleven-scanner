@@ -61,7 +61,18 @@
 
     <button id="continueBtn" type="button" disabled>CONTINUA</button>
   </div>
+<div id="manualEntryArea" style="display:none">
+  <div class="setupBox">
+    <div class="setupTitle" id="manualEntryTitle">NUOVA PROVA</div>
 
+    <input type="text" id="manualNome" placeholder="Nome">
+    <input type="text" id="manualCognome" placeholder="Cognome">
+    <input type="tel" id="manualTelefono" placeholder="Telefono">
+
+    <button id="manualRegisterBtn">REGISTRA</button>
+    <button id="manualCancelBtn" class="secondary">ANNULLA</button>
+  </div>
+</div>
   <div id="scannerArea">
     <div class="lessonInfo" id="lessonInfo"></div>
 
@@ -188,6 +199,20 @@ function enterScanner(){
   if(!selectedActivity || !selectedTime) return;
 
   document.getElementById('setupArea').style.display='none';
+
+  // PROVA e DAILY usano l'inserimento manuale
+  if(selectedActivity === 'PROVA' || selectedActivity === 'DAILY'){
+    document.getElementById('scannerArea').style.display='none';
+    document.getElementById('manualEntryArea').style.display='block';
+
+    document.getElementById('manualEntryTitle').textContent =
+      selectedActivity === 'PROVA' ? 'NUOVA PROVA' : 'NUOVA LEZIONE GIORNALIERA';
+
+    return;
+  }
+
+  // Tutte le altre attività mantengono lo scanner normale
+  document.getElementById('manualEntryArea').style.display='none';
   document.getElementById('scannerArea').style.display='block';
 
   document.getElementById('lessonInfo').textContent=
@@ -195,7 +220,6 @@ function enterScanner(){
 
   setLast('Pronto alla scansione');
 }
-
 var audioCtx=null;
 
 function unlockAudio(){
@@ -662,6 +686,14 @@ render();
 if(!TOKEN){
   setLast('Apri lo scanner dal link personale Oneleven','error');
 }
+  document.getElementById('manualCancelBtn').addEventListener('click', function(){
+  document.getElementById('manualEntryArea').style.display='none';
+  document.getElementById('setupArea').style.display='block';
+
+  document.getElementById('manualNome').value='';
+  document.getElementById('manualCognome').value='';
+  document.getElementById('manualTelefono').value='';
+});
 </script>
 </body>
 </html>
