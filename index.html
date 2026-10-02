@@ -49,7 +49,7 @@
 
 <body>
 <div class="wrap">
- <img src="logo%20scanner.png" alt="Oneleven MTB School" class="mainLogo">
+  <img src="logo%20scanner.png" alt="Oneleven MTB School" class="mainLogo">
   <div class="teacher" id="teacherName">Scanner Oneleven</div>
 
   <div id="setupArea" class="setupBox">
@@ -61,18 +61,20 @@
 
     <button id="continueBtn" type="button" disabled>CONTINUA</button>
   </div>
-<div id="manualEntryArea" style="display:none">
-  <div class="setupBox">
-    <div class="setupTitle" id="manualEntryTitle">NUOVA PROVA</div>
 
-    <input type="text" id="manualNome" placeholder="Nome">
-    <input type="text" id="manualCognome" placeholder="Cognome">
-    <input type="tel" id="manualTelefono" placeholder="Telefono">
+  <div id="manualEntryArea" style="display:none">
+    <div class="setupBox">
+      <div class="setupTitle" id="manualEntryTitle">NUOVA PROVA</div>
 
-    <button id="manualRegisterBtn">REGISTRA</button>
-    <button id="manualCancelBtn" class="secondary">ANNULLA</button>
+      <input type="text" id="manualNome" placeholder="Nome">
+      <input type="text" id="manualCognome" placeholder="Cognome">
+      <input type="tel" id="manualTelefono" placeholder="Telefono">
+
+      <button id="manualRegisterBtn">REGISTRA</button>
+      <button id="manualCancelBtn" class="secondary">ANNULLA</button>
+    </div>
   </div>
-</div>
+
   <div id="scannerArea">
     <div class="lessonInfo" id="lessonInfo"></div>
 
@@ -205,7 +207,6 @@ function enterScanner(){
 
   document.getElementById('setupArea').style.display='none';
 
-  // PROVA e DAILY usano l'inserimento manuale
   if(selectedActivity === 'PROVA' || selectedActivity === 'DAILY'){
     document.getElementById('scannerArea').style.display='none';
     document.getElementById('manualEntryArea').style.display='block';
@@ -216,7 +217,6 @@ function enterScanner(){
     return;
   }
 
-  // Tutte le altre attività mantengono lo scanner normale
   document.getElementById('manualEntryArea').style.display='none';
   document.getElementById('scannerArea').style.display='block';
 
@@ -225,6 +225,7 @@ function enterScanner(){
 
   setLast('Pronto alla scansione');
 }
+
 var audioCtx=null;
 
 function unlockAudio(){
@@ -654,15 +655,11 @@ function saveBatch(){
     b.textContent='REGISTRAZIONE...';
   }
 
-  /*
-    Per sicurezza, in questa prima fase manteniamo
-    invariata la registrazione attuale degli allievi.
-    Tipo attività e orario verranno collegati al backend
-    nel passaggio successivo, dopo il test del controller.
-  */
   jsonp(
     {
       azione:'scannerRegistra',
+      attivita:selectedActivity,
+      orario:selectedTime,
       elementi:JSON.stringify(items)
     },
     doneBatch,
@@ -800,7 +797,8 @@ avviaElencoQr();
 if(!TOKEN){
   setLast('Apri lo scanner dal link personale Oneleven','error');
 }
-  document.getElementById('manualCancelBtn').addEventListener('click', function(){
+
+document.getElementById('manualCancelBtn').addEventListener('click', function(){
   document.getElementById('manualEntryArea').style.display='none';
   document.getElementById('setupArea').style.display='block';
 
@@ -808,6 +806,7 @@ if(!TOKEN){
   document.getElementById('manualCognome').value='';
   document.getElementById('manualTelefono').value='';
 });
+
 document.getElementById('manualRegisterBtn').addEventListener('click', function(){
   const nome = document.getElementById('manualNome').value.trim();
   const cognome = document.getElementById('manualCognome').value.trim();
