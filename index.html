@@ -28,7 +28,7 @@
     .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:20;align-items:center;justify-content:center;padding:18px}
     .box{background:#fff;border-radius:18px;padding:24px 20px;width:100%;max-width:560px;max-height:88vh;overflow:auto;font-size:21px}
     .box h2{text-align:center;font-size:31px;margin:8px 0 20px}
-    .choice{width:100%;margin:9px 0;font-size:21px}
+    .choice{width:100%;margin:9px 0;font-size:21px}.choice.selected{outline:4px solid #e5005a}
     .remove{float:right;background:#b00020;padding:8px 12px;min-height:44px;font-size:18px}
     .error{color:#b00020;font-weight:bold}.ok{color:#087a2f;font-weight:bold}
     input{width:100%;box-sizing:border-box;font-size:31px;padding:16px;text-align:center;border:2px solid #555;border-radius:10px;-webkit-appearance:none;appearance:none}
@@ -38,10 +38,10 @@
     .setupTitle{text-align:center;font-size:25px;font-weight:bold;margin:4px 0 16px}
     .lessonGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
     .lessonGrid button{font-size:18px;min-height:62px;padding:12px 6px}
-    .lessonGrid button.selected{outline:4px solid #777}
+    .lessonGrid button.selected{outline:4px solid #e5005a}
     .timeGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
     .timeGrid button{font-size:18px;min-height:55px;padding:10px 5px}
-    .timeGrid button.selected{outline:4px solid #777}
+    .timeGrid button.selected{outline:4px solid #e5005a}
     #continueBtn{width:100%;margin-top:18px}
     .lessonInfo{background:#fff;border-radius:14px;padding:15px;margin-bottom:14px;text-align:center;font-size:20px;font-weight:bold}
   </style>
@@ -104,6 +104,11 @@ var busy = false;
 var scanner = null;
 var scannerStarted = false;
 var callbackSeq = 0;
+
+var qrMap = {};
+var elencoQrPronto = false;
+var elencoQrCaricamento = false;
+var CACHE_QR_KEY = 'oneleven_qr_elenco_v1';
 
 var tipiPL = ['PL IND','PL COLL CLUB','PL FRIEND','PL DOMENICA','PL IND OUT','PL COLL OUT'];
 
@@ -324,6 +329,104 @@ function jsonp(params,success,failure){
   document.body.appendChild(s);
 }
 
+function indicizzaElencoQr(allievi){
+  qrMap={};
+
+  if(!Array.isArray(allievi)) allievi=[];
+
+  for(var i=0;i<allievi.length;i++){
+    var a=allievi[i]||{};
+    var qr=String(a.qr||'').trim();
+
+    if(qr){
+      qrMap[qr]=a;
+    }
+  }
+
+  elencoQrPronto=true;
+}
+
+function salvaElencoQrCache(allievi){
+  try{
+    localStorage.setItem(
+      CACHE_QR_KEY,
+      JSON.stringify({
+        salvatoIl:Date.now(),
+        allievi:allievi
+      })
+    );
+  }catch(e){}
+}
+
+function caricaElencoQrCache(){
+  try{
+    var raw=localStorage.getItem(CACHE_QR_KEY);
+    if(!raw) return false;
+
+    var cache=JSON.parse(raw);
+
+    if(!cache || !Array.isArray(cache.allievi) || !cache.allievi.length){
+      return false;
+    }
+
+    indicizzaElencoQr(cache.allievi);
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+function aggiornaElencoQr(){
+  if(!TOKEN || elencoQrCaricamento) return;
+
+  elencoQrCaricamento=true;
+
+  jsonp(
+    {azione:'scannerElenco'},
+    function(r){
+      elencoQrCaricamento=false;
+
+      if(!r || !r.ok || !Array.isArray(r.allievi)){
+        if(!elencoQrPronto){
+          setLast(
+            r&&r.messaggio?r.messaggio:'Impossibile caricare elenco allievi',
+            'error'
+          );
+        }
+        return;
+      }
+
+      indicizzaElencoQr(r.allievi);
+      salvaElencoQrCache(r.allievi);
+
+      if(document.getElementById('scannerArea').style.display!=='none'){
+        setLast('Elenco allievi aggiornato - pronto alla scansione','ok');
+      }
+    },
+    function(){
+      elencoQrCaricamento=false;
+
+      if(!elencoQrPronto){
+        setLast('Impossibile caricare elenco allievi','error');
+      }
+    }
+  );
+}
+
+function avviaElencoQr(){
+  if(!TOKEN) return;
+
+  var daCache=caricaElencoQrCache();
+
+  if(daCache){
+    setLast('Elenco allievi pronto','ok');
+  }else{
+    setLast('Caricamento elenco allievi...');
+  }
+
+  aggiornaElencoQr();
+}
+
 function handleQr(qr){
   qr=String(qr||'').trim();
 
@@ -339,9 +442,16 @@ function handleQr(qr){
     return;
   }
 
+  if(elencoQrPronto && qrMap[qr]){
+    beepQr();
+    setLast('QR '+qr+' letto ✓','ok');
+    onResolved(qrMap[qr]);
+    return;
+  }
+
   busy=true;
   beepQr();
-  setLast('QR '+qr+' letto ✓','ok');
+  setLast('Verifica QR '+qr+'...');
 
   jsonp(
     {azione:'scannerRisolvi',qr:qr},
@@ -358,7 +468,7 @@ function onFail(e){
 function onResolved(a){
   busy=false;
 
-  if(!a||!a.ok){
+  if(!a || !a.qr){
     setLast(a&&a.messaggio?a.messaggio:'QR non riconosciuto','error');
     return;
   }
@@ -414,6 +524,9 @@ function choosePL(a){
       b.textContent=tipo;
 
       b.addEventListener('click',function(){
+        var scelte=document.querySelectorAll('#modalBox .choice');
+        for(var j=0;j<scelte.length;j++) scelte[j].classList.remove('selected');
+        this.classList.add('selected');
         addItem(a,tipo);
       });
 
@@ -682,6 +795,7 @@ document.getElementById('finishBtn').addEventListener('click',finishScan);
 
 buildController();
 render();
+avviaElencoQr();
 
 if(!TOKEN){
   setLast('Apri lo scanner dal link personale Oneleven','error');
