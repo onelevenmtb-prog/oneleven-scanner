@@ -299,7 +299,7 @@ function jsonp(params,success,failure){
   var timer=setTimeout(function(){
     cleanup();
     failure(new Error('Tempo di risposta scaduto'));
-  },20000);
+  },60000);
 
   function cleanup(){
     clearTimeout(timer);
