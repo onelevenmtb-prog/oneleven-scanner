@@ -106,6 +106,7 @@ var busy = false;
 var scanner = null;
 var scannerStarted = false;
 var callbackSeq = 0;
+var manualBusy = false;
 
 var qrMap = {};
 var elencoQrPronto = false;
@@ -808,38 +809,73 @@ document.getElementById('manualCancelBtn').addEventListener('click', function(){
 });
 
 document.getElementById('manualRegisterBtn').addEventListener('click', function(){
-  const nome = document.getElementById('manualNome').value.trim();
-  const cognome = document.getElementById('manualCognome').value.trim();
-  const telefono = document.getElementById('manualTelefono').value.trim();
+  if(manualBusy) return;
+
+  var nome = document.getElementById('manualNome').value.trim();
+  var cognome = document.getElementById('manualCognome').value.trim();
+  var telefono = document.getElementById('manualTelefono').value.trim();
+  var btn = document.getElementById('manualRegisterBtn');
 
   if(!nome || !cognome || !telefono){
     alert('Inserisci Nome, Cognome e Telefono');
     return;
   }
 
+  manualBusy = true;
+  btn.disabled = true;
+  btn.textContent = 'REGISTRAZIONE...';
+
   jsonp(
-    {
-      azione:'scannerRegistraManuale',
-      tipo:selectedActivity,
-      nome:nome,
-      cognome:cognome,
-      telefono:telefono,
-      orario:selectedTime
-    },
+    {azione:'scannerRegistraManuale',tipo:selectedActivity,nome:nome,cognome:cognome,telefono:telefono,orario:selectedTime},
     function(r){
-      if(r && r.ok){
-        alert(
-          'TEST BACKEND OK\n' +
-          r.tipo + ' — ' + r.orario + '\n' +
-          r.nome + ' ' + r.cognome + '\n' +
-          'Telefono: ' + r.telefono + '\n' +
-          'Maestro: ' + r.maestro
-        );
-      }else{
+      if(!r || !r.ok){
+        manualBusy=false; btn.disabled=false; btn.textContent='REGISTRA';
         alert((r && r.messaggio) ? r.messaggio : 'Errore registrazione');
+        return;
       }
+
+      document.getElementById('manualEntryArea').style.display='none';
+
+      showModalHtml(
+        '<div style="text-align:center;font-size:56px;line-height:1;margin:4px 0 18px">✓</div>'+
+        '<h2>REGISTRAZIONE COMPLETATA</h2>'+
+        '<p style="text-align:center;font-size:24px;line-height:1.5">'+
+        '<b>'+esc(r.tipo)+' — '+esc(r.orario)+'</b><br>'+
+        esc(r.nome+' '+r.cognome)+'<br>'+
+        'Maestro: <b>'+esc(r.maestro)+'</b>'+
+        (r.duplicato ? '<br><span class="error">Già presente: nessun doppione creato</span>' : '')+
+        '</p>'+
+        '<button id="newManual" class="choice" type="button">NUOVA REGISTRAZIONE</button>'+
+        '<button id="closeManual" class="choice secondary" type="button">CHIUDI SCANNER</button>'
+      );
+
+      document.getElementById('newManual').addEventListener('click',function(){
+        closeModal();
+        document.getElementById('manualNome').value='';
+        document.getElementById('manualCognome').value='';
+        document.getElementById('manualTelefono').value='';
+        selectedActivity=''; selectedTime='';
+        var a=document.querySelectorAll('[data-activity]');
+        for(var i=0;i<a.length;i++) a[i].classList.remove('selected');
+        var o=document.querySelectorAll('[data-time]');
+        for(var j=0;j<o.length;j++) o[j].classList.remove('selected');
+        manualBusy=false; btn.disabled=false; btn.textContent='REGISTRA';
+        document.getElementById('setupArea').style.display='block';
+        checkController();
+      });
+
+      document.getElementById('closeManual').addEventListener('click',function(){
+        document.body.innerHTML=
+          '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;background:#f4f4f4;font-family:Arial,sans-serif">'+
+          '<div style="width:100%;max-width:560px;background:#fff;border-radius:18px;padding:34px 22px;text-align:center;box-sizing:border-box">'+
+          '<div style="font-size:56px;line-height:1;margin-bottom:18px">✓</div>'+
+          '<h1 style="font-size:32px;margin:0 0 14px">SCANNER CHIUSO</h1>'+
+          '<p style="font-size:21px;line-height:1.4;margin:0">La registrazione è stata completata.<br>Puoi chiudere questa schermata.</p>'+
+          '</div></div>';
+      });
     },
     function(){
+      manualBusy=false; btn.disabled=false; btn.textContent='REGISTRA';
       alert('Errore di collegamento');
     }
   );
