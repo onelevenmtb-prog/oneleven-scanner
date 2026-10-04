@@ -44,6 +44,8 @@
     .timeGrid button.selected{outline:4px solid #e5005a}
     #continueBtn{width:100%;margin-top:18px}
     .lessonInfo{background:#fff;border-radius:14px;padding:15px;margin-bottom:14px;text-align:center;font-size:20px;font-weight:bold}
+    #paymentBtn{display:none;width:100%;margin:0 0 14px 0;background:#087a2f}
+    .paymentResult{background:#f4f4f4;border-radius:12px;padding:14px;margin:12px 0;text-align:center}
   </style>
 </head>
 
@@ -51,6 +53,8 @@
 <div class="wrap">
   <img src="logo%20scanner.png" alt="Oneleven MTB School" class="mainLogo">
   <div class="teacher" id="teacherName">Scanner Oneleven</div>
+
+  <button id="paymentBtn" type="button">REGISTRA PAGAMENTO</button>
 
   <div id="setupArea" class="setupBox">
     <div class="setupTitle">TIPO DI ATTIVITÀ</div>
@@ -107,6 +111,12 @@ var scanner = null;
 var scannerStarted = false;
 var callbackSeq = 0;
 var manualBusy = false;
+var paymentBusy = false;
+var paymentTeacher = '';
+var paymentId = '';
+var paymentStudent = null;
+var paymentType = '';
+var paymentCollector = '';
 
 var qrMap = {};
 var elencoQrPronto = false;
@@ -140,6 +150,298 @@ function setLast(t,cls){
   var e=document.getElementById('last');
   e.className='last '+(cls||'');
   e.textContent=t;
+}
+
+function normalizzaTesto(v){
+  return String(v||'').trim().toLowerCase();
+}
+
+function nomeMaestroDaTitolo(){
+  var t=String(document.getElementById('teacherName').textContent||'');
+  return t.replace(/^Scanner\s+/i,'').trim();
+}
+
+function pagamentoAutorizzato(maestro){
+  var m=normalizzaTesto(maestro);
+  return m==='dario' || m==='brino' || m==='monica' || m==='miriam';
+}
+
+function aggiornaPulsantePagamento(){
+  paymentTeacher=nomeMaestroDaTitolo();
+  var b=document.getElementById('paymentBtn');
+  if(!b) return;
+  b.style.display=pagamentoAutorizzato(paymentTeacher)?'block':'none';
+}
+
+function elencoAllieviUnici(){
+  var out=[], visti={};
+  Object.keys(qrMap).forEach(function(qr){
+    var a=qrMap[qr]||{};
+    var id=String(a.id||'').trim();
+    if(!id || visti[id]) return;
+    visti[id]=true;
+    out.push(a);
+  });
+  return out;
+}
+
+function nuovoIdPagamento(){
+  return 'S-'+Date.now()+'-'+Math.random().toString(36).slice(2,10).toUpperCase();
+}
+
+function apriPagamento(){
+  if(!pagamentoAutorizzato(nomeMaestroDaTitolo())) return;
+
+  if(!elencoQrPronto){
+    showModalHtml(
+      '<h2>PAGAMENTO</h2>'+
+      '<p style="text-align:center">Elenco allievi non ancora disponibile.</p>'+
+      '<button id="payRetryList" class="choice" type="button">AGGIORNA ELENCO</button>'+
+      '<button id="payClose" class="choice secondary" type="button">ANNULLA</button>'
+    );
+    document.getElementById('payRetryList').addEventListener('click',function(){
+      aggiornaElencoQr();
+      closeModal();
+    });
+    document.getElementById('payClose').addEventListener('click',closeModal);
+    return;
+  }
+
+  paymentId='';
+  paymentStudent=null;
+  paymentType='';
+  paymentCollector='';
+  cercaAllievoPagamento();
+}
+
+function cercaAllievoPagamento(){
+  showModalHtml(
+    '<h2>REGISTRA PAGAMENTO</h2>'+
+    '<p style="text-align:center"><b>Cerca per cognome</b></p>'+
+    '<input id="paySearch" type="text" autocomplete="off" placeholder="Iniziali o cognome">'+
+    '<button id="paySearchOk" class="choice" type="button">CERCA</button>'+
+    '<button id="paySearchCancel" class="choice secondary" type="button">ANNULLA</button>'
+  );
+
+  document.getElementById('paySearchOk').addEventListener('click',eseguiRicercaPagamento);
+  document.getElementById('paySearchCancel').addEventListener('click',closeModal);
+  document.getElementById('paySearch').addEventListener('keydown',function(e){
+    if(e.key==='Enter') eseguiRicercaPagamento();
+  });
+
+  setTimeout(function(){
+    var x=document.getElementById('paySearch');
+    if(x)x.focus();
+  },120);
+}
+
+function eseguiRicercaPagamento(){
+  var q=normalizzaTesto(document.getElementById('paySearch').value);
+  if(!q){
+    alert('Inserisci almeno una lettera del cognome');
+    return;
+  }
+
+  var all=elencoAllieviUnici();
+  var trovati=[];
+
+  for(var i=0;i<all.length;i++){
+    var c=normalizzaTesto(all[i].cognome);
+    if(c.indexOf(q)===0) trovati.push(all[i]);
+  }
+
+  if(!trovati.length){
+    alert('Nessun allievo trovato');
+    return;
+  }
+
+  if(trovati.length===1){
+    scegliAllievoPagamento(trovati[0]);
+    return;
+  }
+
+  var box=document.getElementById('modalBox');
+  box.innerHTML='<h2>SCEGLI ALLIEVO</h2>';
+
+  for(var j=0;j<trovati.length;j++){
+    (function(a){
+      var b=document.createElement('button');
+      b.type='button';
+      b.className='choice';
+      b.textContent=(a.cognome||'')+' '+(a.nome||'')+' — '+(a.destinazione||'');
+      b.addEventListener('click',function(){scegliAllievoPagamento(a);});
+      box.appendChild(b);
+    })(trovati[j]);
+  }
+
+  var back=document.createElement('button');
+  back.type='button';
+  back.className='choice secondary';
+  back.textContent='NUOVA RICERCA';
+  back.addEventListener('click',cercaAllievoPagamento);
+  box.appendChild(back);
+}
+
+function scegliAllievoPagamento(a){
+  paymentStudent=a;
+
+  showModalHtml(
+    '<h2>'+esc((a.nome||'')+' '+(a.cognome||''))+'</h2>'+
+    '<p style="text-align:center"><b>SCEGLI TIPO PAGAMENTO</b></p>'+
+    '<button id="payCash" class="choice" type="button">CASH</button>'+
+    '<button id="payBank" class="choice" type="button">BONIFICO</button>'+
+    '<button id="payBackStudent" class="choice secondary" type="button">INDIETRO</button>'
+  );
+
+  document.getElementById('payCash').addEventListener('click',function(){
+    paymentType='CASH';
+    scegliIncassatoDa();
+  });
+  document.getElementById('payBank').addEventListener('click',function(){
+    paymentType='BONIFICO';
+    paymentCollector='';
+    chiediImportoPagamento();
+  });
+  document.getElementById('payBackStudent').addEventListener('click',cercaAllievoPagamento);
+}
+
+function scegliIncassatoDa(){
+  showModalHtml(
+    '<h2>CASH</h2>'+
+    '<p style="text-align:center"><b>CHI HA INCASSATO?</b></p>'+
+    '<button id="payDario" class="choice" type="button">DARIO</button>'+
+    '<button id="payBrino" class="choice" type="button">BRINO</button>'+
+    '<button id="payBackType" class="choice secondary" type="button">INDIETRO</button>'
+  );
+
+  document.getElementById('payDario').addEventListener('click',function(){
+    paymentCollector='DARIO'; chiediImportoPagamento();
+  });
+  document.getElementById('payBrino').addEventListener('click',function(){
+    paymentCollector='BRINO'; chiediImportoPagamento();
+  });
+  document.getElementById('payBackType').addEventListener('click',function(){
+    scegliAllievoPagamento(paymentStudent);
+  });
+}
+
+function chiediImportoPagamento(){
+  showModalHtml(
+    '<h2>IMPORTO</h2>'+
+    '<p style="text-align:center"><b>'+esc(paymentStudent.nome+' '+paymentStudent.cognome)+'</b><br>'+
+    esc(paymentType)+(paymentCollector?' — '+esc(paymentCollector):'')+'</p>'+
+    '<input id="payAmount" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00">'+
+    '<button id="payAmountOk" class="choice" type="button">CONTINUA</button>'+
+    '<button id="payAmountBack" class="choice secondary" type="button">INDIETRO</button>'
+  );
+
+  document.getElementById('payAmountOk').addEventListener('click',confermaPagamento);
+  document.getElementById('payAmountBack').addEventListener('click',function(){
+    if(paymentType==='CASH') scegliIncassatoDa();
+    else scegliAllievoPagamento(paymentStudent);
+  });
+  document.getElementById('payAmount').addEventListener('keydown',function(e){
+    if(e.key==='Enter') confermaPagamento();
+  });
+
+  setTimeout(function(){
+    var x=document.getElementById('payAmount');
+    if(x)x.focus();
+  },120);
+}
+
+function importoPagamentoValido(v){
+  var t=String(v||'').trim().replace(/\s/g,'').replace(/€/g,'');
+  if(t.indexOf(',')>=0){
+    t=t.replace(/\./g,'').replace(',','.');
+  }
+  var n=Number(t);
+  return isFinite(n)&&n>0?n:0;
+}
+
+function confermaPagamento(){
+  var raw=document.getElementById('payAmount').value;
+  var n=importoPagamentoValido(raw);
+
+  if(!n){
+    alert('Inserisci un importo valido');
+    return;
+  }
+
+  paymentId=nuovoIdPagamento();
+
+  showModalHtml(
+    '<h2>CONFERMA PAGAMENTO</h2>'+
+    '<div class="paymentResult">'+
+    '<b>'+esc(paymentStudent.nome+' '+paymentStudent.cognome)+'</b><br>'+
+    esc(paymentStudent.destinazione||'')+'<br><br>'+
+    '<b>'+esc(paymentType)+'</b><br>'+
+    (paymentCollector?'Incassato da: <b>'+esc(paymentCollector)+'</b><br>':'')+
+    '<span style="font-size:30px"><b>€ '+n.toFixed(2).replace('.',',')+'</b></span>'+
+    '</div>'+
+    '<button id="payConfirm" class="choice" type="button">REGISTRA PAGAMENTO</button>'+
+    '<button id="payCancelConfirm" class="choice secondary" type="button">ANNULLA</button>'
+  );
+
+  document.getElementById('payConfirm').addEventListener('click',function(){
+    inviaPagamento(n);
+  });
+  document.getElementById('payCancelConfirm').addEventListener('click',closeModal);
+}
+
+function inviaPagamento(importo){
+  if(paymentBusy) return;
+  paymentBusy=true;
+
+  var b=document.getElementById('payConfirm');
+  if(b){b.disabled=true;b.textContent='REGISTRAZIONE...';}
+
+  jsonp(
+    {
+      azione:'scannerRegistraPagamento',
+      id:paymentStudent.id||'',
+      nome:paymentStudent.nome||'',
+      cognome:paymentStudent.cognome||'',
+      destinazione:paymentStudent.destinazione||'',
+      tipo:paymentType,
+      importo:String(importo),
+      incassatoDa:paymentCollector,
+      idPagamento:paymentId
+    },
+    function(r){
+      paymentBusy=false;
+
+      if(!r||!r.ok){
+        if(b){b.disabled=false;b.textContent='REGISTRA PAGAMENTO';}
+        alert(r&&r.messaggio?r.messaggio:'Errore registrazione pagamento');
+        return;
+      }
+
+      showModalHtml(
+        '<div style="text-align:center;font-size:56px;line-height:1;margin:4px 0 18px">✓</div>'+
+        '<h2>PAGAMENTO REGISTRATO</h2>'+
+        '<p style="text-align:center;font-size:24px;line-height:1.5">'+
+        '<b>'+esc(paymentStudent.nome+' '+paymentStudent.cognome)+'</b><br>'+
+        esc(paymentType)+' — € '+Number(importo).toFixed(2).replace('.',',')+
+        (paymentCollector?'<br>Incassato da: <b>'+esc(paymentCollector)+'</b>':'')+
+        (r.duplicato?'<br><span class="error">Pagamento già presente: nessun doppione creato</span>':'')+
+        '</p>'+
+        '<button id="payNew" class="choice" type="button">NUOVO PAGAMENTO</button>'+
+        '<button id="payDone" class="choice secondary" type="button">CHIUDI</button>'
+      );
+
+      document.getElementById('payNew').addEventListener('click',function(){
+        closeModal();
+        apriPagamento();
+      });
+      document.getElementById('payDone').addEventListener('click',closeModal);
+    },
+    function(){
+      paymentBusy=false;
+      if(b){b.disabled=false;b.textContent='REGISTRA PAGAMENTO';}
+      alert('Errore di collegamento. Se il pagamento è arrivato a Google, lo stesso ID impedirà il doppione ripremendo REGISTRA PAGAMENTO.');
+    }
+  );
 }
 
 function buildController(){
@@ -401,6 +703,12 @@ function aggiornaElencoQr(){
       indicizzaElencoQr(r.allievi);
       salvaElencoQrCache(r.allievi);
 
+      if(r.maestro){
+        document.getElementById('teacherName').textContent='Scanner '+r.maestro;
+        document.title='Scanner '+r.maestro+' - Oneleven MTB';
+      }
+      aggiornaPulsantePagamento();
+
       if(document.getElementById('scannerArea').style.display!=='none'){
         setLast('Elenco allievi aggiornato - pronto alla scansione','ok');
       }
@@ -478,6 +786,7 @@ function onResolved(a){
   if(a.maestro){
     document.getElementById('teacherName').textContent='Scanner '+a.maestro;
     document.title='Scanner '+a.maestro+' - Oneleven MTB';
+    aggiornaPulsantePagamento();
   }
 
   if(already(a.qr)){
@@ -790,10 +1099,12 @@ document.getElementById('continueBtn').addEventListener('click',enterScanner);
 document.getElementById('startCameraBtn').addEventListener('click',startCamera);
 document.getElementById('manualBtn').addEventListener('click',manualQr);
 document.getElementById('finishBtn').addEventListener('click',finishScan);
+document.getElementById('paymentBtn').addEventListener('click',apriPagamento);
 
 buildController();
 render();
 avviaElencoQr();
+aggiornaPulsantePagamento();
 
 if(!TOKEN){
   setLast('Apri lo scanner dal link personale Oneleven','error');
