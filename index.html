@@ -558,17 +558,71 @@ function confermaAdmin(){
 }
 
 function inviaAdmin(){
-  if(adminBusy)return; adminBusy=true;
-  var b=document.getElementById('adminConfirm'); if(b){b.disabled=true;b.textContent='REGISTRAZIONE...';}
-  var p={azione:adminMode==='SPESA'?'scannerRegistraSpesa':'scannerRegistraEntrataVaria',data:adminData.data,importo:String(adminData.importo),metodo:adminData.metodo,cassa:adminData.cassa||'',idMovimento:adminMovementId};
-  if(adminMode==='SPESA'){p.categoria=adminData.categoria;p.oggetto=adminData.oggetto;}else{p.descrizione=adminData.descrizione;}
-  jsonp(p,function(r){
-    adminBusy=false;
-    if(!r||!r.ok){if(b){b.disabled=false;b.textContent='REGISTRA';}alert(r&&r.messaggio?r.messaggio:'Errore registrazione');return;}
-    showModalHtml('<div style="text-align:center;font-size:56px;line-height:1;margin:4px 0 18px">✓</div><h2>'+(adminMode==='SPESA'?'SPESA REGISTRATA':'ENTRATA REGISTRATA')+'</h2>'+ 
-      (r.duplicato?'<p class="error" style="text-align:center">Movimento già presente: nessun doppione creato</p>':'')+'<button id="adminDone" class="choice secondary" type="button">CHIUDI</button>');
-    document.getElementById('adminDone').addEventListener('click',closeModal);
-  },function(){adminBusy=false;if(b){b.disabled=false;b.textContent='REGISTRA';}alert('Errore di collegamento. Ripremendo REGISTRA lo stesso ID impedirà il doppione.');});
+  if(adminBusy)return;
+  adminBusy=true;
+
+  var b=document.getElementById('adminConfirm');
+  if(b){b.disabled=true;b.textContent='REGISTRAZIONE...';}
+
+  inviaAdminTentativo_(0);
+}
+
+function inviaAdminTentativo_(tentativo){
+  var b=document.getElementById('adminConfirm');
+  var p={
+    azione:adminMode==='SPESA'?'scannerRegistraSpesa':'scannerRegistraEntrataVaria',
+    data:adminData.data,
+    importo:String(adminData.importo),
+    metodo:adminData.metodo,
+    cassa:adminData.cassa||'',
+    idMovimento:adminMovementId
+  };
+
+  if(adminMode==='SPESA'){
+    p.categoria=adminData.categoria;
+    p.oggetto=adminData.oggetto;
+  }else{
+    p.descrizione=adminData.descrizione;
+  }
+
+  jsonp(
+    p,
+    function(r){
+      adminBusy=false;
+
+      if(!r||!r.ok){
+        if(b){b.disabled=false;b.textContent='REGISTRA';}
+        alert(r&&r.messaggio?r.messaggio:'Errore registrazione');
+        return;
+      }
+
+      showModalHtml(
+        '<div style="text-align:center;font-size:56px;line-height:1;margin:4px 0 18px">✓</div>'+
+        '<h2>'+(adminMode==='SPESA'?'SPESA REGISTRATA':'ENTRATA REGISTRATA')+'</h2>'+
+        (r.duplicato?'<p style="text-align:center">Registrazione verificata: nessun doppione creato</p>':'')+
+        '<button id="adminDone" class="choice secondary" type="button">CHIUDI</button>'
+      );
+
+      document.getElementById('adminDone').addEventListener('click',closeModal);
+    },
+    function(){
+      if(tentativo===0){
+        if(b) b.textContent='VERIFICA REGISTRAZIONE...';
+
+        // Riprova una sola volta con lo STESSO ID Movimento.
+        // Se il primo invio era già stato scritto su Google,
+        // il backend restituisce duplicato=true senza creare una seconda riga.
+        setTimeout(function(){
+          inviaAdminTentativo_(1);
+        },800);
+        return;
+      }
+
+      adminBusy=false;
+      if(b){b.disabled=false;b.textContent='REGISTRA';}
+      alert('Impossibile ricevere la conferma dal gestionale. Non creare una nuova operazione: controllare il registro Google.');
+    }
+  );
 }
 
 function buildController(){
