@@ -1085,6 +1085,10 @@ function saveBatch(){
     b.textContent='REGISTRAZIONE...';
   }
 
+  inviaBatchPresenze_(0);
+}
+
+function inviaBatchPresenze_(tentativo){
   jsonp(
     {
       azione:'scannerRegistra',
@@ -1092,15 +1096,40 @@ function saveBatch(){
       orario:selectedTime,
       elementi:JSON.stringify(items)
     },
-    doneBatch,
-    onBatchFail
+    function(r){
+      // Se il primo invio era arrivato al gestionale ma la risposta
+      // si era persa, il secondo invio viene riconosciuto dal server
+      // come duplicato entro 5 minuti. Per l'utente la registrazione
+      // è comunque completata correttamente.
+      if(tentativo > 0 && r && r.ok && Number(r.registrati||0) === 0 && Number(r.duplicati||0) > 0){
+        r.registrati = items.length;
+        r.duplicati = 0;
+      }
+      doneBatch(r);
+    },
+    function(e){
+      if(tentativo === 0){
+        var b=document.getElementById('saveBtn');
+        if(b) b.textContent='VERIFICA REGISTRAZIONE...';
+
+        // Un solo reinvio automatico e immediato.
+        // È sicuro perché registraBatchScanner blocca i duplicati
+        // dello stesso allievo/tipo nei 5 minuti precedenti.
+        setTimeout(function(){
+          inviaBatchPresenze_(1);
+        },800);
+        return;
+      }
+
+      onBatchFail(e);
+    }
   );
 }
 
 function onBatchFail(e){
   closeModal();
   setLast(
-    'Errore registrazione: '+(e&&e.message?e.message:e),
+    'Impossibile ricevere la conferma dal gestionale. Non ripetere subito la registrazione: controllare REGISTRO ATTIVITA.',
     'error'
   );
 }
