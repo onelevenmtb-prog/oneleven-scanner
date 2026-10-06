@@ -132,6 +132,13 @@ var elencoQrPronto = false;
 var elencoQrCaricamento = false;
 var CACHE_QR_KEY = 'oneleven_qr_elenco_v1';
 
+// Evita che la fotocamera rilevi due volte di seguito lo stesso QR.
+// La prima lettura passa subito; le riletture dello stesso codice
+// nei 2 secondi successivi vengono ignorate senza mostrare errori.
+var ultimoQrLetto = '';
+var ultimoQrLettoTs = 0;
+var QR_COOLDOWN_MS = 2000;
+
 var tipiPL = ['PL IND','PL COLL CLUB','PL FRIEND','PL DOMENICA','PL IND OUT','PL COLL OUT'];
 
 var tipiAttivita = [
@@ -864,6 +871,17 @@ function handleQr(qr){
     setLast('Inserisci un codice QR valido','error');
     return;
   }
+
+  var adessoQr = Date.now();
+
+  // Se la fotocamera sta ancora vedendo lo stesso QR appena acquisito,
+  // ignora silenziosamente la rilettura. Un QR diverso passa subito.
+  if(qr === ultimoQrLetto && (adessoQr - ultimoQrLettoTs) < QR_COOLDOWN_MS){
+    return;
+  }
+
+  ultimoQrLetto = qr;
+  ultimoQrLettoTs = adessoQr;
 
   if(busy)return;
 
