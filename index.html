@@ -458,7 +458,10 @@ function inviaPagamento(importo){
 
 
 function nuovoIdMovimento(){
-  return 'MOV-'+Date.now()+'-'+Math.random().toString(36).slice(2,10).toUpperCase();
+  if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+    return 'MOV-' + window.crypto.randomUUID().toUpperCase();
+  }
+  return 'MOV-' + Date.now() + '-' + Math.random().toString(36).slice(2,12).toUpperCase();
 }
 
 function dataOggiInput(){
@@ -470,7 +473,7 @@ function dataOggiInput(){
 }
 
 function apriSpesa(){
-  adminMode='SPESA'; adminData={}; adminMovementId='';
+  adminMode='SPESA'; adminData={}; adminMovementId=nuovoIdMovimento();
   var cats=[
     'SPESE ASD','ALLENAMENTI TEAM / GARE / TESSERAMENTI','ABBIGLIAMENTO','MERCHANDISING',
     'SPESE BANCARIE','PUBBLICITA / SOCIAL','EVENTI','BICI E ACQUISTO RICAMBI'
@@ -485,7 +488,7 @@ function apriSpesa(){
 }
 
 function apriEntrataVaria(){
-  adminMode='ENTRATA'; adminData={}; adminMovementId='';
+  adminMode='ENTRATA'; adminData={}; adminMovementId=nuovoIdMovimento();
   chiediDescrizioneAdmin();
 }
 
@@ -537,7 +540,7 @@ function chiediDataAdmin(){
 }
 
 function confermaAdmin(){
-  adminMovementId=nuovoIdMovimento();
+  if(!adminMovementId) adminMovementId=nuovoIdMovimento();
   var desc=adminMode==='SPESA'?adminData.oggetto:adminData.descrizione;
   var extra=adminMode==='SPESA'?'<b>'+esc(adminData.categoria)+'</b><br>':'';
   showModalHtml('<h2>CONFERMA</h2><div class="paymentResult">'+extra+esc(desc)+'<br>'+esc(adminData.data)+'<br><br><b>'+esc(adminData.metodo)+'</b>'+ 
