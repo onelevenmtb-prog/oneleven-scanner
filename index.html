@@ -44,7 +44,10 @@
     .timeGrid button.selected{outline:4px solid #e5005a}
     #continueBtn{width:100%;margin-top:18px}
     .lessonInfo{background:#fff;border-radius:14px;padding:15px;margin-bottom:14px;text-align:center;font-size:20px;font-weight:bold}
-    #paymentBtn{display:none;width:100%;margin:0 0 14px 0;background:#087a2f}
+    #paymentBtn{display:none;width:100%;margin:0 0 10px 0;background:#087a2f}
+    #expenseBtn,#otherIncomeBtn{display:none;width:100%;margin:0 0 10px 0}
+    #expenseBtn{background:#9b1c1c}
+    #otherIncomeBtn{background:#1d4ed8}
     .paymentResult{background:#f4f4f4;border-radius:12px;padding:14px;margin:12px 0;text-align:center}
   </style>
 </head>
@@ -55,6 +58,8 @@
   <div class="teacher" id="teacherName">Scanner Oneleven</div>
 
   <button id="paymentBtn" type="button">REGISTRA PAGAMENTO</button>
+  <button id="expenseBtn" type="button">REGISTRA SPESA</button>
+  <button id="otherIncomeBtn" type="button">ENTRATE VARIE</button>
 
   <div id="setupArea" class="setupBox">
     <div class="setupTitle">TIPO DI ATTIVITÀ</div>
@@ -117,6 +122,10 @@ var paymentId = '';
 var paymentStudent = null;
 var paymentType = '';
 var paymentCollector = '';
+var adminBusy=false;
+var adminMode='';
+var adminData={};
+var adminMovementId='';
 
 var qrMap = {};
 var elencoQrPronto = false;
@@ -168,9 +177,12 @@ function pagamentoAutorizzato(maestro){
 
 function aggiornaPulsantePagamento(){
   paymentTeacher=nomeMaestroDaTitolo();
-  var b=document.getElementById('paymentBtn');
-  if(!b) return;
-  b.style.display=pagamentoAutorizzato(paymentTeacher)?'block':'none';
+  var ok=pagamentoAutorizzato(paymentTeacher);
+  var ids=['paymentBtn','expenseBtn','otherIncomeBtn'];
+  for(var i=0;i<ids.length;i++){
+    var b=document.getElementById(ids[i]);
+    if(b)b.style.display=ok?'block':'none';
+  }
 }
 
 function elencoAllieviUnici(){
@@ -442,6 +454,111 @@ function inviaPagamento(importo){
       alert('Errore di collegamento. Se il pagamento è arrivato a Google, lo stesso ID impedirà il doppione ripremendo REGISTRA PAGAMENTO.');
     }
   );
+}
+
+
+function nuovoIdMovimento(){
+  return 'MOV-'+Date.now()+'-'+Math.random().toString(36).slice(2,10).toUpperCase();
+}
+
+function dataOggiInput(){
+  var d=new Date();
+  var y=d.getFullYear();
+  var m=String(d.getMonth()+1).padStart(2,'0');
+  var g=String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+g;
+}
+
+function apriSpesa(){
+  adminMode='SPESA'; adminData={}; adminMovementId='';
+  var cats=[
+    'SPESE ASD','ALLENAMENTI TEAM / GARE / TESSERAMENTI','ABBIGLIAMENTO','MERCHANDISING',
+    'SPESE BANCARIE','PUBBLICITA / SOCIAL','EVENTI','BICI E ACQUISTO RICAMBI'
+  ];
+  var h='<h2>REGISTRA SPESA</h2><div class="paymentList">';
+  for(var i=0;i<cats.length;i++) h+='<button class="choice adminCat" data-cat="'+esc(cats[i])+'" type="button">'+esc(cats[i])+'</button>';
+  h+='</div><button id="adminCancel" class="choice secondary" type="button">ANNULLA</button>';
+  showModalHtml(h);
+  var bs=document.querySelectorAll('.adminCat');
+  for(var j=0;j<bs.length;j++) bs[j].addEventListener('click',function(){adminData.categoria=this.getAttribute('data-cat');chiediDescrizioneAdmin();});
+  document.getElementById('adminCancel').addEventListener('click',closeModal);
+}
+
+function apriEntrataVaria(){
+  adminMode='ENTRATA'; adminData={}; adminMovementId='';
+  chiediDescrizioneAdmin();
+}
+
+function chiediDescrizioneAdmin(){
+  var titolo=adminMode==='SPESA'?'OGGETTO / DESCRIZIONE SPESA':'DESCRIZIONE ENTRATA';
+  showModalHtml('<h2>'+titolo+'</h2><input id="adminDesc" type="text" autocomplete="off" placeholder="Descrizione">'+
+    '<button id="adminDescOk" class="choice" type="button">CONTINUA</button><button id="adminCancel" class="choice secondary" type="button">ANNULLA</button>');
+  document.getElementById('adminDescOk').addEventListener('click',function(){
+    var v=String(document.getElementById('adminDesc').value||'').trim(); if(!v){alert('Inserisci una descrizione');return;}
+    if(adminMode==='SPESA')adminData.oggetto=v; else adminData.descrizione=v; chiediImportoAdmin();
+  });
+  document.getElementById('adminCancel').addEventListener('click',closeModal);
+  setTimeout(function(){var x=document.getElementById('adminDesc');if(x)x.focus();},100);
+}
+
+function chiediImportoAdmin(){
+  showModalHtml('<h2>IMPORTO</h2><input id="adminAmount" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00">'+
+    '<button id="adminAmountOk" class="choice" type="button">CONTINUA</button><button id="adminCancel" class="choice secondary" type="button">ANNULLA</button>');
+  document.getElementById('adminAmountOk').addEventListener('click',function(){
+    var n=importoPagamentoValido(document.getElementById('adminAmount').value); if(!n){alert('Inserisci un importo valido');return;}
+    adminData.importo=n; scegliMetodoAdmin();
+  });
+  document.getElementById('adminCancel').addEventListener('click',closeModal);
+}
+
+function scegliMetodoAdmin(){
+  showModalHtml('<h2>METODO</h2><button id="adminCash" class="choice" type="button">CASH</button>'+ 
+    '<button id="adminBank" class="choice" type="button">BANCOMAT / POS / BANK</button><button id="adminCancel" class="choice secondary" type="button">ANNULLA</button>');
+  document.getElementById('adminCash').addEventListener('click',function(){adminData.metodo='CASH';scegliCassaAdmin();});
+  document.getElementById('adminBank').addEventListener('click',function(){adminData.metodo='BANK';adminData.cassa='';chiediDataAdmin();});
+  document.getElementById('adminCancel').addEventListener('click',closeModal);
+}
+
+function scegliCassaAdmin(){
+  showModalHtml('<h2>CASSA CASH</h2><button id="cashDario" class="choice" type="button">DARIO</button>'+ 
+    '<button id="cashBrino" class="choice" type="button">BRINO</button><button id="adminCancel" class="choice secondary" type="button">ANNULLLA</button>');
+  document.getElementById('cashDario').addEventListener('click',function(){adminData.cassa='DARIO';chiediDataAdmin();});
+  document.getElementById('cashBrino').addEventListener('click',function(){adminData.cassa='BRINO';chiediDataAdmin();});
+  document.getElementById('adminCancel').addEventListener('click',closeModal);
+}
+
+function chiediDataAdmin(){
+  showModalHtml('<h2>DATA</h2><input id="adminDate" type="date" value="'+dataOggiInput()+'">'+
+    '<button id="adminDateOk" class="choice" type="button">CONTINUA</button><button id="adminCancel" class="choice secondary" type="button">ANNULLA</button>');
+  document.getElementById('adminDateOk').addEventListener('click',function(){
+    var v=document.getElementById('adminDate').value; if(!v){alert('Inserisci la data');return;} adminData.data=v; confermaAdmin();
+  });
+  document.getElementById('adminCancel').addEventListener('click',closeModal);
+}
+
+function confermaAdmin(){
+  adminMovementId=nuovoIdMovimento();
+  var desc=adminMode==='SPESA'?adminData.oggetto:adminData.descrizione;
+  var extra=adminMode==='SPESA'?'<b>'+esc(adminData.categoria)+'</b><br>':'';
+  showModalHtml('<h2>CONFERMA</h2><div class="paymentResult">'+extra+esc(desc)+'<br>'+esc(adminData.data)+'<br><br><b>'+esc(adminData.metodo)+'</b>'+ 
+    (adminData.cassa?'<br>Cassa: <b>'+esc(adminData.cassa)+'</b>':'')+'<br><span style="font-size:30px"><b>€ '+Number(adminData.importo).toFixed(2).replace('.',',')+'</b></span></div>'+ 
+    '<button id="adminConfirm" class="choice" type="button">REGISTRA</button><button id="adminCancel" class="choice secondary" type="button">ANNULLA</button>');
+  document.getElementById('adminConfirm').addEventListener('click',inviaAdmin);
+  document.getElementById('adminCancel').addEventListener('click',closeModal);
+}
+
+function inviaAdmin(){
+  if(adminBusy)return; adminBusy=true;
+  var b=document.getElementById('adminConfirm'); if(b){b.disabled=true;b.textContent='REGISTRAZIONE...';}
+  var p={azione:adminMode==='SPESA'?'scannerRegistraSpesa':'scannerRegistraEntrataVaria',data:adminData.data,importo:String(adminData.importo),metodo:adminData.metodo,cassa:adminData.cassa||'',idMovimento:adminMovementId};
+  if(adminMode==='SPESA'){p.categoria=adminData.categoria;p.oggetto=adminData.oggetto;}else{p.descrizione=adminData.descrizione;}
+  jsonp(p,function(r){
+    adminBusy=false;
+    if(!r||!r.ok){if(b){b.disabled=false;b.textContent='REGISTRA';}alert(r&&r.messaggio?r.messaggio:'Errore registrazione');return;}
+    showModalHtml('<div style="text-align:center;font-size:56px;line-height:1;margin:4px 0 18px">✓</div><h2>'+(adminMode==='SPESA'?'SPESA REGISTRATA':'ENTRATA REGISTRATA')+'</h2>'+ 
+      (r.duplicato?'<p class="error" style="text-align:center">Movimento già presente: nessun doppione creato</p>':'')+'<button id="adminDone" class="choice secondary" type="button">CHIUDI</button>');
+    document.getElementById('adminDone').addEventListener('click',closeModal);
+  },function(){adminBusy=false;if(b){b.disabled=false;b.textContent='REGISTRA';}alert('Errore di collegamento. Ripremendo REGISTRA lo stesso ID impedirà il doppione.');});
 }
 
 function buildController(){
@@ -1100,6 +1217,8 @@ document.getElementById('startCameraBtn').addEventListener('click',startCamera);
 document.getElementById('manualBtn').addEventListener('click',manualQr);
 document.getElementById('finishBtn').addEventListener('click',finishScan);
 document.getElementById('paymentBtn').addEventListener('click',apriPagamento);
+document.getElementById('expenseBtn').addEventListener('click',apriSpesa);
+document.getElementById('otherIncomeBtn').addEventListener('click',apriEntrataVaria);
 
 buildController();
 render();
