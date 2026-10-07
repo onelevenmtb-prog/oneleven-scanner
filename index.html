@@ -1222,12 +1222,16 @@ function doneBatch(r){
   items.splice(0,items.length);
   render();
 
+  var soloDuplicati = Number(n) === 0 && Number(d) > 0;
+
   showModalHtml(
-    '<div style="text-align:center;font-size:56px;line-height:1;margin:4px 0 18px">✓</div>'+
-    '<h2>REGISTRAZIONE COMPLETATA</h2>'+
+    '<div style="text-align:center;font-size:56px;line-height:1;margin:4px 0 18px">'+(soloDuplicati?'!':'✓')+'</div>'+
+    '<h2>'+(soloDuplicati?'LEZIONE GIÀ REGISTRATA':'REGISTRAZIONE COMPLETATA')+'</h2>'+
     '<p style="text-align:center;font-size:27px;line-height:1.4">'+
-    'Registrati: <b>'+n+'</b><br>'+
-    'Già presenti: <b>'+d+'</b></p>'+
+    (soloDuplicati
+      ? 'Nessun doppione creato<br><br>Già presenti: <b>'+d+'</b>'
+      : 'Registrati: <b>'+n+'</b><br>Già presenti: <b>'+d+'</b>')+
+    '</p>'+
     '<button id="newScan" class="choice" type="button">NUOVA SCANSIONE</button>'+
     '<button id="closeScanner" class="choice secondary" type="button">CHIUDI SCANNER</button>'
   );
