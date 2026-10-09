@@ -122,6 +122,8 @@ var paymentId = '';
 var paymentStudent = null;
 var paymentType = '';
 var paymentCollector = '';
+var paymentDate = '';
+var paymentAmount = 0;
 var adminBusy=false;
 var adminMode='';
 var adminData={};
@@ -230,6 +232,8 @@ function apriPagamento(){
   paymentStudent=null;
   paymentType='';
   paymentCollector='';
+  paymentDate='';
+  paymentAmount=0;
   cercaAllievoPagamento();
 }
 
@@ -354,13 +358,13 @@ function chiediImportoPagamento(){
     '<button id="payAmountBack" class="choice secondary" type="button">INDIETRO</button>'
   );
 
-  document.getElementById('payAmountOk').addEventListener('click',confermaPagamento);
+  document.getElementById('payAmountOk').addEventListener('click',chiediDataIncassoPagamento);
   document.getElementById('payAmountBack').addEventListener('click',function(){
     if(paymentType==='CASH') scegliIncassatoDa();
     else scegliAllievoPagamento(paymentStudent);
   });
   document.getElementById('payAmount').addEventListener('keydown',function(e){
-    if(e.key==='Enter') confermaPagamento();
+    if(e.key==='Enter') chiediDataIncassoPagamento();
   });
 
   setTimeout(function(){
@@ -378,14 +382,36 @@ function importoPagamentoValido(v){
   return isFinite(n)&&n>0?n:0;
 }
 
-function confermaPagamento(){
-  var raw=document.getElementById('payAmount').value;
-  var n=importoPagamentoValido(raw);
+function chiediDataIncassoPagamento(){
+  var el=document.getElementById('payAmount');
+  var n=importoPagamentoValido(el?el.value:'');
+  if(!n){alert('Inserisci un importo valido');return;}
+  // Conserva l'importo quando cambia la schermata.
+  paymentAmount=n;
+  if(!paymentDate) paymentDate=dataOggiInput();
+  showModalHtml(
+    '<h2>DATA INCASSO</h2>'+ 
+    '<p style="text-align:center">'+esc(paymentStudent.nome+' '+paymentStudent.cognome)+
+    '<br>'+esc(paymentType)+' — € '+n.toFixed(2).replace('.',',')+'</p>'+ 
+    '<input id="payDate" type="date" value="'+esc(paymentDate)+'">'+
+    '<button id="payDateOk" class="choice" type="button">CONTINUA</button>'+ 
+    '<button id="payDateBack" class="choice secondary" type="button">INDIETRO</button>'
+  );
+  document.getElementById('payDateOk').addEventListener('click',function(){
+    var d=document.getElementById('payDate').value;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) {alert('Inserisci una data valida');return;}
+    var p=d.split('-'); var prova=new Date(Number(p[0]),Number(p[1])-1,Number(p[2]));
+    if(prova.getFullYear()!==Number(p[0])||prova.getMonth()!==Number(p[1])-1||prova.getDate()!==Number(p[2])){alert('Data non valida');return;}
+    if(prova.getTime()>new Date().setHours(23,59,59,999)){alert('La data incasso non può essere futura');return;}
+    paymentDate=d;
+    confermaPagamento();
+  });
+  document.getElementById('payDateBack').addEventListener('click',chiediImportoPagamento);
+}
 
-  if(!n){
-    alert('Inserisci un importo valido');
-    return;
-  }
+function confermaPagamento(){
+  var n=paymentAmount;
+  if(!n || !paymentDate){alert('Importo o data mancanti');return;}
 
   paymentId=nuovoIdPagamento();
 
@@ -396,6 +422,7 @@ function confermaPagamento(){
     esc(paymentStudent.destinazione||'')+'<br><br>'+
     '<b>'+esc(paymentType)+'</b><br>'+
     (paymentCollector?'Incassato da: <b>'+esc(paymentCollector)+'</b><br>':'')+
+    'Data incasso: <b>'+esc(paymentDate.split('-').reverse().join('/'))+'</b><br>'+
     '<span style="font-size:30px"><b>€ '+n.toFixed(2).replace('.',',')+'</b></span>'+
     '</div>'+
     '<button id="payConfirm" class="choice" type="button">REGISTRA PAGAMENTO</button>'+
@@ -425,6 +452,7 @@ function inviaPagamento(importo){
       tipo:paymentType,
       importo:String(importo),
       incassatoDa:paymentCollector,
+      dataIncasso:paymentDate,
       idPagamento:paymentId
     },
     function(r){
@@ -442,6 +470,7 @@ function inviaPagamento(importo){
         '<p style="text-align:center;font-size:24px;line-height:1.5">'+
         '<b>'+esc(paymentStudent.nome+' '+paymentStudent.cognome)+'</b><br>'+
         esc(paymentType)+' — € '+Number(importo).toFixed(2).replace('.',',')+
+    '<br>Data incasso: <b>'+esc(paymentDate.split('-').reverse().join('/'))+'</b>'+
         (paymentCollector?'<br>Incassato da: <b>'+esc(paymentCollector)+'</b>':'')+
         (r.duplicato?'<br><span class="error">Pagamento già presente: nessun doppione creato</span>':'')+
         '</p>'+
