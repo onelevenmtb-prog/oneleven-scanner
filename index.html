@@ -130,6 +130,7 @@ var adminData={};
 var adminMovementId='';
 
 var qrMap = {};
+var allieviPagamento = [];
 var elencoQrPronto = false;
 var elencoQrCaricamento = false;
 var CACHE_QR_KEY = 'oneleven_qr_elenco_v1';
@@ -195,15 +196,7 @@ function aggiornaPulsantePagamento(){
 }
 
 function elencoAllieviUnici(){
-  var out=[], visti={};
-  Object.keys(qrMap).forEach(function(qr){
-    var a=qrMap[qr]||{};
-    var id=String(a.id||'').trim();
-    if(!id || visti[id]) return;
-    visti[id]=true;
-    out.push(a);
-  });
-  return out;
+  return allieviPagamento.slice();
 }
 
 function nuovoIdPagamento(){
@@ -240,8 +233,8 @@ function apriPagamento(){
 function cercaAllievoPagamento(){
   showModalHtml(
     '<h2>REGISTRA PAGAMENTO</h2>'+
-    '<p style="text-align:center"><b>Cerca per cognome</b></p>'+
-    '<input id="paySearch" type="text" autocomplete="off" placeholder="Iniziali o cognome">'+
+    '<p style="text-align:center"><b>Cerca per nome o cognome</b></p>'+
+    '<input id="paySearch" type="text" autocomplete="off" placeholder="Nome o cognome">'+
     '<button id="paySearchOk" class="choice" type="button">CERCA</button>'+
     '<button id="paySearchCancel" class="choice secondary" type="button">ANNULLA</button>'
   );
@@ -261,7 +254,7 @@ function cercaAllievoPagamento(){
 function eseguiRicercaPagamento(){
   var q=normalizzaTesto(document.getElementById('paySearch').value);
   if(!q){
-    alert('Inserisci almeno una lettera del cognome');
+    alert('Inserisci almeno una lettera del nome o cognome');
     return;
   }
 
@@ -270,7 +263,7 @@ function eseguiRicercaPagamento(){
 
   for(var i=0;i<all.length;i++){
     var c=normalizzaTesto(all[i].cognome);
-    if(c.indexOf(q)===0) trovati.push(all[i]);
+    if(c.indexOf(q)===0 || normalizzaTesto(all[i].nome).indexOf(q)===0) trovati.push(all[i]);
   }
 
   if(!trovati.length){
@@ -845,15 +838,24 @@ function jsonp(params,success,failure){
 
 function indicizzaElencoQr(allievi){
   qrMap={};
+  allieviPagamento=[];
+  var idsVisti={};
 
   if(!Array.isArray(allievi)) allievi=[];
 
   for(var i=0;i<allievi.length;i++){
     var a=allievi[i]||{};
     var qr=String(a.qr||'').trim();
+    var id=String(a.id||'').trim();
 
-    if(qr){
-      qrMap[qr]=a;
+    // La scansione usa esclusivamente le associazioni QR valide.
+    if(qr) qrMap[qr]=a;
+
+    // La ricerca pagamenti comprende anche gli iscritti senza QR.
+    var chiave=id.toUpperCase();
+    if(id && !idsVisti[chiave]){
+      idsVisti[chiave]=true;
+      allieviPagamento.push(a);
     }
   }
 
