@@ -48,6 +48,14 @@
     #expenseBtn,#otherIncomeBtn{display:none;width:100%;margin:0 0 10px 0}
     #expenseBtn{background:#9b1c1c}
     #otherIncomeBtn{background:#1d4ed8}
+    #notesBtn{display:none;width:100%;margin:0 0 14px 0;background:#a51959}
+    #modalBox .noteArea{font:inherit;box-sizing:border-box;width:100%;min-height:160px;padding:14px;border:2px solid #777;border-radius:12px;font-size:21px;resize:vertical;text-align:left}
+    #modalBox .noteGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    #modalBox .noteGrid button{font-size:18px;min-height:56px;padding:10px 6px;margin:0}
+    #modalBox .noteTimes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+    #modalBox .noteTimes button{font-size:17px;min-height:52px;padding:8px 3px;margin:0}
+    #modalBox .noteSelected{outline:4px solid #e5005a}
+    #modalBox .noteMeta{font-size:19px;background:#f3f3f3;border-radius:10px;padding:12px;margin:10px 0;white-space:pre-wrap}
     .paymentResult{background:#f4f4f4;border-radius:12px;padding:14px;margin:12px 0;text-align:center}
   </style>
 </head>
@@ -60,6 +68,7 @@
   <button id="paymentBtn" type="button">REGISTRA PAGAMENTO</button>
   <button id="expenseBtn" type="button">REGISTRA SPESA</button>
   <button id="otherIncomeBtn" type="button">ENTRATE VARIE</button>
+  <button id="notesBtn" type="button">NOTE GIORNALIERE</button>
 
   <div id="setupArea" class="setupBox">
     <div class="setupTitle">TIPO DI ATTIVITÀ</div>
@@ -128,6 +137,13 @@ var adminBusy=false;
 var adminMode='';
 var adminData={};
 var adminMovementId='';
+// NOTE GIORNALIERE: contesto separato dalla registrazione delle lezioni.
+var noteMode=false;
+var noteContext={tipo:'',orario:'',data:''};
+var noteDraft='';
+var notePending=null; // Non viene eliminata finche' Google non conferma l'ID.
+var noteSending=false;
+var NOTE_PENDING_STORAGE_PREFIX='oneleven_note_pending_v2_';
 
 var qrMap = {};
 var allieviPagamento = [];
@@ -192,6 +208,16 @@ function aggiornaPulsantePagamento(){
     var b=document.getElementById(ids[i]);
     if(b)b.style.display=ok?'block':'none';
   }
+}
+
+// Mostra le note solo dopo il riconoscimento del maestro da parte di Google.
+// Il backend verifica comunque il token per ogni operazione.
+function aggiornaPulsanteNote(){
+  var b=document.getElementById('notesBtn');
+  if(!b)return;
+  var maestro=nomeMaestroDaTitolo();
+  b.style.display=(TOKEN && maestro && maestro!=='Oneleven')?'block':'none';
+  if(b.style.display==='block')notaRipristinaPending();
 }
 
 function elencoAllieviUnici(){
@@ -646,6 +672,303 @@ function inviaAdminTentativo_(tentativo){
   );
 }
 
+
+// ============================================================== 
+// NOTE GIORNALIERE - Interfaccia indipendente dalla scansione.
+// POST: testo nel corpo, mai nell'URL.
+// Conferma: JSONP con SOLO ID e token.
+// I reinvii di una nota usano SEMPRE lo stesso ID.
+// ============================================================== 
+// Recupero sicuro dopo un aggiornamento o una chiusura della pagina.
+// localStorage: SOLO ID, data, tipo, orario (nessun testo personale).
+// sessionStorage: conserva temporaneamente il testo nella stessa scheda.
+function notaStorageKey(){
+  var n=normalizzaTesto(nomeMaestroDaTitolo());
+  // Distinta anche per deployment: i test non interferiscono con lo scanner operativo.
+  var m=String(API_URL||'').match(/\/macros\/s\/([^/]+)\//);
+  var servizio=m?m[1]:'sconosciuto';
+  return NOTE_PENDING_STORAGE_PREFIX+servizio+'_'+n.replace(/[^a-z0-9]/g,'_');
+}
+function notaSalvaPending(){
+  if(!notePending)return false;
+  var chiave=notaStorageKey();
+  var meta={idNota:notePending.idNota,dataLezione:notePending.dataLezione,
+    tipoAttivita:notePending.tipoAttivita,orarioLezione:notePending.orarioLezione,
+    salvatoIl:Date.now()};
+  try{
+    localStorage.setItem(chiave,JSON.stringify(meta));
+    if(localStorage.getItem(chiave)!==JSON.stringify(meta))return false;
+  }catch(e){return false;}
+  try{sessionStorage.setItem(chiave,JSON.stringify(notePending));}catch(e){}
+  return true;
+}
+function notaRipristinaPending(){
+  if(notePending || !TOKEN || nomeMaestroDaTitolo()==='Oneleven')return;
+  var chiave=notaStorageKey(), meta=null;
+  try{meta=JSON.parse(localStorage.getItem(chiave)||'null');}catch(e){}
+  if(!meta || !/^N-[A-Za-z0-9_-]{16,90}$/.test(String(meta.idNota||'')))return;
+  var ricostruita={idNota:meta.idNota,dataLezione:String(meta.dataLezione||''),
+    tipoAttivita:String(meta.tipoAttivita||''),orarioLezione:String(meta.orarioLezione||''),testo:''};
+  try{
+    var sessione=JSON.parse(sessionStorage.getItem(chiave)||'null');
+    if(sessione && sessione.idNota===meta.idNota && typeof sessione.testo==='string'){
+      ricostruita.testo=sessione.testo;
+    }
+  }catch(e){}
+  notePending=ricostruita;
+  noteContext={tipo:ricostruita.tipoAttivita,orario:ricostruita.orarioLezione,data:ricostruita.dataLezione};
+}
+function notaRimuoviPending(){
+  var chiave=notaStorageKey();
+  try{localStorage.removeItem(chiave);}catch(e){}
+  try{sessionStorage.removeItem(chiave);}catch(e){}
+}
+function notaRecuperaTesto(){
+  if(!notePending || noteSending)return;
+  var h='<h2>RECUPERA NOTA IN SOSPESO</h2>'+
+    '<p>Ricomponi la comunicazione originale. Verrà usato lo STESSO ID, non sarà creata una nuova nota.</p>'+
+    '<div class="noteMeta">'+esc(notePending.tipoAttivita)+' — '+esc(notePending.orarioLezione)+' — '+esc(notePending.dataLezione)+'</div>'+
+    '<textarea id="notaRecuperoTesto" class="noteArea" maxlength="2000" placeholder="Testo della comunicazione originale"></textarea>'+
+    '<button id="notaRecuperoOk" class="choice" type="button">SALVA TESTO E RICONTROLLA</button>'+
+    '<button id="notaRecuperoTorna" class="choice secondary" type="button">INDIETRO</button>';
+  showModalHtml(h);
+  document.getElementById('notaRecuperoOk').addEventListener('click',function(){
+    var testo=document.getElementById('notaRecuperoTesto').value.replace(/\r\n?/g,'\n').trim();
+    if(!testo || testo.length>2000){alert('Inserisci la comunicazione originale.');return;}
+    notePending.testo=testo;
+    if(!notaSalvaPending()){
+      alert('Il browser non riesce a proteggere il riferimento della nota. Non inviare.');return;
+    }
+    notaVerifica();
+  });
+  document.getElementById('notaRecuperoTorna').addEventListener('click',function(){
+    notaSchermataSospesa('Controllo della nota in sospeso.');
+  });
+}
+
+function notaNuovoId(){
+  if(window.crypto && typeof window.crypto.randomUUID==='function'){
+    return 'N-'+window.crypto.randomUUID();
+  }
+  if(window.crypto && typeof window.crypto.getRandomValues==='function'){
+    var bytes=new Uint8Array(20);
+    window.crypto.getRandomValues(bytes);
+    var out='';
+    for(var i=0;i<bytes.length;i++)out+=('0'+bytes[i].toString(16)).slice(-2);
+    return 'N-'+out;
+  }
+  return ''; // Nessun Math.random per un ID destinato all'antidoppione.
+}
+
+function notaDataOggi(){
+  var d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function notaDescrizione(){
+  return noteContext.tipo+' — '+noteContext.orario+' — '+noteContext.data.split('-').reverse().join('/');
+}
+
+function notaApri(){
+  if(!TOKEN || nomeMaestroDaTitolo()==='Oneleven'){
+    alert('Attendi il riconoscimento del maestro prima di inserire una nota.');
+    return;
+  }
+  noteMode=true;
+  if(notePending){notaSchermataSospesa('Operazione da verificare');return;}
+  var oggi=notaDataOggi();
+  if(noteContext.data!==oggi){
+    noteContext={tipo:'',orario:'',data:oggi};
+    noteDraft='';
+  }
+  // Se una sessione e' gia' selezionata nello scanner, usala come proposta.
+  if(!noteContext.tipo && selectedActivity)noteContext.tipo=selectedActivity;
+  if(!noteContext.orario && selectedTime)noteContext.orario=selectedTime;
+  if(noteContext.tipo && noteContext.orario)notaScrivi();
+  else notaSeleziona();
+}
+
+function notaChiudi(){
+  if(noteSending)return;
+  noteMode=false;
+  closeModal();
+}
+
+function notaSeleziona(){
+  if(notePending){notaSchermataSospesa('Operazione da verificare');return;}
+  var h='<h2>NOTE GIORNALIERE</h2><p style="text-align:center">Seleziona la lezione e l\'orario.<br>Rimarranno memorizzati per le note successive.</p>'+
+    '<div class="noteMeta">Maestro: '+esc(nomeMaestroDaTitolo())+'\nData: '+esc(noteContext.data.split('-').reverse().join('/'))+'</div>'+
+    '<p><b>TIPO DI ATTIVITÀ</b></p><div class="noteGrid">';
+  for(var i=0;i<tipiAttivita.length;i++){
+    var tipo=tipiAttivita[i];
+    h+='<button type="button" class="noteTipo'+(noteContext.tipo===tipo?' noteSelected':'')+'" data-nt="'+esc(tipo)+'">'+esc(tipo)+'</button>';
+  }
+  h+='</div><p><b>ORARIO INIZIO</b></p><div class="noteTimes">';
+  for(var ora=8;ora<=18;ora++){
+    var fine=ora===18?1:2;
+    for(var j=0;j<fine;j++){
+      var t=String(ora).padStart(2,'0')+':'+(j?'30':'00');
+      h+='<button type="button" class="noteOra'+(noteContext.orario===t?' noteSelected':'')+'" data-no="'+t+'">'+t+'</button>';
+    }
+  }
+  h+='</div><button id="notaVai" class="choice" type="button">SCRIVI NOTA</button>'+
+    '<button id="notaChiudi" class="choice secondary" type="button">TORNA ALLO SCANNER</button>';
+  showModalHtml(h);
+  document.querySelectorAll('[data-nt]').forEach(function(b){
+    b.addEventListener('click',function(){
+      noteContext.tipo=b.getAttribute('data-nt');
+      document.querySelectorAll('[data-nt]').forEach(function(x){x.classList.remove('noteSelected');});
+      b.classList.add('noteSelected');
+    });
+  });
+  document.querySelectorAll('[data-no]').forEach(function(b){
+    b.addEventListener('click',function(){
+      noteContext.orario=b.getAttribute('data-no');
+      document.querySelectorAll('[data-no]').forEach(function(x){x.classList.remove('noteSelected');});
+      b.classList.add('noteSelected');
+    });
+  });
+  document.getElementById('notaVai').addEventListener('click',function(){
+    if(!noteContext.tipo || !noteContext.orario){alert('Seleziona attivita e orario.');return;}
+    notaScrivi();
+  });
+  document.getElementById('notaChiudi').addEventListener('click',notaChiudi);
+}
+
+function notaScrivi(){
+  if(notePending){notaSchermataSospesa('Operazione da verificare');return;}
+  if(!noteContext.tipo || !noteContext.orario){notaSeleziona();return;}
+  var h='<h2>NUOVA NOTA</h2><div class="noteMeta">'+esc(nomeMaestroDaTitolo())+'\n'+esc(notaDescrizione())+'</div>'+
+    '<label for="notaTesto"><b>COMUNICAZIONE</b></label>'+
+    '<textarea id="notaTesto" class="noteArea" maxlength="2000" placeholder="Scrivi la comunicazione..." spellcheck="true"></textarea>'+
+    '<p style="font-size:16px">Le note vengono aggiunte, non modificano i conteggi delle lezioni.</p>'+
+    '<button id="notaRiepilogo" class="choice" type="button">CONTINUA</button>'+
+    '<button id="notaCambia" class="choice secondary" type="button">CAMBIA LEZIONE / ORARIO</button>'+
+    '<button id="notaEsci" class="choice secondary" type="button">TORNA ALLO SCANNER</button>';
+  showModalHtml(h);
+  document.getElementById('notaTesto').value=noteDraft;
+  document.getElementById('notaRiepilogo').addEventListener('click',function(){
+    noteDraft=document.getElementById('notaTesto').value.replace(/\r\n?/g,'\n').trim();
+    if(!noteDraft || noteDraft.length>2000){alert('Inserisci una comunicazione di massimo 2000 caratteri.');return;}
+    notaConferma();
+  });
+  document.getElementById('notaCambia').addEventListener('click',function(){
+    noteDraft=document.getElementById('notaTesto').value;
+    notaSeleziona();
+  });
+  document.getElementById('notaEsci').addEventListener('click',function(){
+    noteDraft=document.getElementById('notaTesto').value;
+    notaChiudi();
+  });
+}
+
+function notaConferma(){
+  showModalHtml('<h2>CONFERMA NOTA</h2><div class="noteMeta">'+esc(nomeMaestroDaTitolo())+'\n'+esc(notaDescrizione())+'</div>'+
+    '<div class="noteMeta">'+esc(noteDraft)+'</div>'+
+    '<button id="notaInvia" class="choice" type="button">REGISTRA NOTA</button>'+
+    '<button id="notaIndietro" class="choice secondary" type="button">INDIETRO</button>');
+  document.getElementById('notaInvia').addEventListener('click',notaInvia);
+  document.getElementById('notaIndietro').addEventListener('click',notaScrivi);
+}
+
+function notaInvia(){
+  if(noteSending || notePending)return;
+  var id=notaNuovoId();
+  if(!id){alert('Impossibile generare un ID sicuro. Nessuna nota inviata.');return;}
+  notePending={idNota:id,dataLezione:noteContext.data,tipoAttivita:noteContext.tipo,
+    orarioLezione:noteContext.orario,testo:noteDraft};
+  if(!notaSalvaPending()){
+    notePending=null;
+    alert('Impossibile memorizzare in sicurezza l’ID della nota. Nessun invio effettuato.');
+    return;
+  }
+  notaPostStessoId();
+}
+
+function notaPostStessoId(){
+  if(noteSending || !notePending || !notePending.testo)return;
+  noteSending=true;
+  notaAttesa('Invio in corso. Non chiudere lo scanner.');
+  // Non si legge la risposta POST (no-cors); la conferma usa scannerVerificaNota.
+  var payload={azione:'scannerRegistraNota',token:TOKEN,
+    idNota:notePending.idNota,dataLezione:notePending.dataLezione,
+    tipoAttivita:notePending.tipoAttivita,orarioLezione:notePending.orarioLezione,
+    testo:notePending.testo};
+  fetch(API_URL,{method:'POST',mode:'no-cors',credentials:'include',redirect:'follow',
+    headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(payload)})
+  .then(function(){
+    noteSending=false;
+    notaVerifica();
+  }).catch(function(){
+    noteSending=false;
+    notaVerifica(); // Anche in caso di errore il POST potrebbe essere arrivato.
+  });
+}
+
+function notaAttesa(messaggio){
+  showModalHtml('<h2>NOTE GIORNALIERE</h2><p style="text-align:center">'+esc(messaggio)+'</p>'+
+    '<p style="text-align:center;font-size:17px">Mantieni aperta questa schermata fino alla conferma.</p>');
+}
+
+function notaVerifica(){
+  if(noteSending || !notePending)return;
+  noteSending=true;
+  notaAttesa('Controllo su Google della nota appena inviata...');
+  jsonp({azione:'scannerVerificaNota',idNota:notePending.idNota},function(r){
+    noteSending=false;
+    if(r && r.ok===true && r.registrata===true && r.idNota===notePending.idNota){
+      notaRimuoviPending();
+      notePending=null;
+      noteDraft='';
+      notaSuccesso(r.progressivo);
+    }else if(r && r.ok===true && r.registrata===false){
+      notaSchermataSospesa('Nota non ancora trovata in Google. Ricontrolla prima di reinviare.',true);
+    }else{
+      notaSchermataSospesa(r&&r.messaggio?r.messaggio:'Conferma non disponibile.');
+    }
+  },function(){
+    noteSending=false;
+    notaSchermataSospesa('Non ho ricevuto la conferma da Google.');
+  });
+}
+
+function notaSchermataSospesa(messaggio,confermataAssente){
+  var h='<h2>NOTA DA VERIFICARE</h2>'+
+    '<p class="error" style="text-align:center">'+esc(messaggio)+'</p>'+
+    '<div class="noteMeta">'+esc(nomeMaestroDaTitolo())+'\n'+esc(notePending?notePending.tipoAttivita+' — '+notePending.orarioLezione+' — '+notePending.dataLezione:'')+'</div>'+
+    '<p style="font-size:17px">NON creare una nuova nota con lo stesso testo. L\'identificativo rimane conservato finche\' questa pagina resta aperta.</p>'+
+    '<button id="notaRicontrolla" class="choice" type="button">RICONTROLLA SENZA INVIARE</button>';
+  if(confermataAssente && notePending && notePending.testo){
+    h+='<button id="notaRiprova" class="choice secondary" type="button">RINVIA CON LO STESSO ID</button>';
+  }
+  if(notePending && !notePending.testo){
+    h+='<p style="font-size:16px">Dopo la chiusura della scheda il testo non resta memorizzato. Puoi riscrivere il testo originale mantenendo l’ID precedente.</p>'+
+      '<button id="notaRipristinaTesto" class="choice secondary" type="button">RECUPERA TESTO ORIGINALE</button>';
+  }
+  h+='<button id="notaTorna" class="choice secondary" type="button">TORNA ALLO SCANNER (IN ATTESA)</button>';
+  showModalHtml(h);
+  document.getElementById('notaRicontrolla').addEventListener('click',notaVerifica);
+  if(confermataAssente && notePending && notePending.testo){
+    document.getElementById('notaRiprova').addEventListener('click',notaPostStessoId);
+  }
+  if(notePending && !notePending.testo){
+    document.getElementById('notaRipristinaTesto').addEventListener('click',notaRecuperaTesto);
+  }
+  document.getElementById('notaTorna').addEventListener('click',notaChiudi);
+}
+
+function notaSuccesso(progressivo){
+  showModalHtml('<div style="text-align:center;font-size:56px">✓</div><h2>NOTA REGISTRATA</h2>'+
+    '<div class="noteMeta">'+esc(nomeMaestroDaTitolo())+'\n'+esc(notaDescrizione())+'</div>'+
+    '<p style="text-align:center">Confermata su Google'+(progressivo?' — n. '+esc(progressivo):'')+'</p>'+
+    '<button id="notaAltra" class="choice" type="button">ALTRA NOTA (STESSA LEZIONE)</button>'+
+    '<button id="notaCambia2" class="choice secondary" type="button">CAMBIA LEZIONE / ORARIO</button>'+
+    '<button id="notaFine" class="choice secondary" type="button">TORNA ALLO SCANNER</button>');
+  document.getElementById('notaAltra').addEventListener('click',notaScrivi);
+  document.getElementById('notaCambia2').addEventListener('click',notaSeleziona);
+  document.getElementById('notaFine').addEventListener('click',notaChiudi);
+}
+
 function buildController(){
   var lessonGrid=document.getElementById('lessonGrid');
 
@@ -919,6 +1242,7 @@ function aggiornaElencoQr(){
         document.title='Scanner '+r.maestro+' - Oneleven MTB';
       }
       aggiornaPulsantePagamento();
+      aggiornaPulsanteNote();
 
       if(document.getElementById('scannerArea').style.display!=='none'){
         setLast('Elenco allievi aggiornato - pronto alla scansione','ok');
@@ -1009,6 +1333,7 @@ function onResolved(a){
     document.getElementById('teacherName').textContent='Scanner '+a.maestro;
     document.title='Scanner '+a.maestro+' - Oneleven MTB';
     aggiornaPulsantePagamento();
+    aggiornaPulsanteNote();
   }
 
   if(already(a.qr)){
@@ -1321,7 +1646,7 @@ function startCamera(){
         disableFlip:true
       },
       function(txt){
-        if(!busy)handleQr(txt);
+        if(!busy && !noteMode)handleQr(txt);
       },
       function(){}
     )
@@ -1357,11 +1682,13 @@ document.getElementById('finishBtn').addEventListener('click',finishScan);
 document.getElementById('paymentBtn').addEventListener('click',apriPagamento);
 document.getElementById('expenseBtn').addEventListener('click',apriSpesa);
 document.getElementById('otherIncomeBtn').addEventListener('click',apriEntrataVaria);
+  document.getElementById('notesBtn').addEventListener('click',notaApri);
 
 buildController();
 render();
 avviaElencoQr();
 aggiornaPulsantePagamento();
+aggiornaPulsanteNote();
 
 if(!TOKEN){
   setLast('Apri lo scanner dal link personale Oneleven','error');
