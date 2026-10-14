@@ -323,9 +323,108 @@ function eseguiRicercaPagamento(){
   box.appendChild(back);
 }
 
+// STORICO PAGAMENTI - sola consultazione del registro Google.
+// Dopo la scelta dell'allievo, si mostra lo storico prima del nuovo incasso.
+var storicoRichiestaSeq=0;
+
 function scegliAllievoPagamento(a){
   paymentStudent=a;
+  var id=String(a&&a.id||'').trim();
+  var richiesta=++storicoRichiestaSeq;
 
+  if(!id){
+    erroreStoricoPagamento('ID ONELEVEN mancante: impossibile verificare lo storico.');
+    return;
+  }
+
+  showModalHtml(
+    '<h2>STORICO PAGAMENTI</h2>'+
+    '<p style="text-align:center"><b>'+esc((a.nome||'')+' '+(a.cognome||''))+'</b></p>'+
+    '<p style="text-align:center">Caricamento pagamenti da Google...</p>'+
+    '<button id="payHistoryBack" class="choice secondary" type="button">INDIETRO</button>'
+  );
+  document.getElementById('payHistoryBack').addEventListener('click',function(){
+    ++storicoRichiestaSeq; // Ignora un'eventuale risposta tardiva.
+    cercaAllievoPagamento();
+  });
+
+  jsonp(
+    {azione:'scannerStoricoPagamenti',id:id},
+    function(r){
+      if(richiesta!==storicoRichiestaSeq || paymentStudent!==a) return;
+      if(!r || r.ok!==true || !Array.isArray(r.pagamenti) ||
+         !Number.isFinite(Number(r.numeroPagamenti)) ||
+         Number(r.numeroPagamenti)!==r.pagamenti.length ||
+         !Number.isFinite(Number(r.totaleVersato)) ||
+         String(r.idOneleven||'').trim()!==id){
+        erroreStoricoPagamento(r&&r.messaggio?r.messaggio:'Risposta storico incompleta o non valida.');
+        return;
+      }
+      mostraStoricoPagamento(a,r);
+    },
+    function(e){
+      if(richiesta!==storicoRichiestaSeq || paymentStudent!==a) return;
+      erroreStoricoPagamento(e&&e.message?e.message:'Impossibile contattare Google.');
+    }
+  );
+}
+
+function erroreStoricoPagamento(messaggio){
+  showModalHtml(
+    '<h2>STORICO NON DISPONIBILE</h2>'+
+    '<p class="error" style="text-align:center">'+esc(messaggio)+'</p>'+
+    '<p style="text-align:center;font-size:17px">Non sono stati verificati i pagamenti precedenti. Nessun nuovo pagamento avviato.</p>'+
+    '<button id="payHistoryRetry" class="choice" type="button">RIPROVA</button>'+
+    '<button id="payHistoryBack" class="choice secondary" type="button">INDIETRO</button>'
+  );
+  document.getElementById('payHistoryRetry').addEventListener('click',function(){
+    if(paymentStudent) scegliAllievoPagamento(paymentStudent);
+  });
+  document.getElementById('payHistoryBack').addEventListener('click',function(){
+    ++storicoRichiestaSeq;
+    cercaAllievoPagamento();
+  });
+}
+
+function mostraStoricoPagamento(a,r){
+  var n=r.pagamenti.length;
+  var euro=function(v){return Number(v).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';};
+  var h='<h2>STORICO PAGAMENTI</h2>'+
+    '<p style="text-align:center"><b>'+esc((a.nome||'')+' '+(a.cognome||''))+'</b><br>'+esc(a.destinazione||'')+ '<br><span style="font-size:15px">'+esc(a.id||'')+'</span></p>'+
+    '<div class="paymentResult"><b>Totale versato: '+esc(euro(r.totaleVersato))+'</b><br>'+n+' pagament'+(n===1?'o':'i')+' registrat'+(n===1?'o':'i')+'</div>';
+
+  if(n===0){
+    h+='<p style="text-align:center">Nessun pagamento precedente registrato.</p>';
+  }else{
+    h+='<div style="max-height:34vh;overflow-y:auto;border-top:1px solid #ddd;border-bottom:1px solid #ddd">';
+    for(var i=0;i<n;i++){
+      var p=r.pagamenti[i];
+      if(!p || !Number.isFinite(Number(p.importo))){
+        erroreStoricoPagamento('Importo di un movimento non valido.');
+        return;
+      }
+      var dettagli=[p.data||p.dataIncasso||p.dataRegistrazione||'Data non disponibile',p.tipoPagamento||'Modalità non disponibile'];
+      if(p.incassatoDa) dettagli.push('Incassato da '+p.incassatoDa);
+      if(p.origine) dettagli.push(p.origine);
+      h+='<div style="padding:13px 4px;border-bottom:1px solid #eee">'+
+        '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">'+
+        '<span style="font-size:16px">'+esc(dettagli[0])+'</span>'+
+        '<b style="white-space:nowrap;font-size:20px">'+esc(euro(p.importo))+'</b></div>'+
+        '<div style="font-size:15px;line-height:1.4;color:#444">'+esc(dettagli.slice(1).join(' · '))+'</div></div>';
+    }
+    h+='</div>';
+  }
+  h+='<button id="payHistoryContinue" class="choice" type="button">NUOVO PAGAMENTO</button>'+
+     '<button id="payHistoryBack" class="choice secondary" type="button">INDIETRO</button>';
+  showModalHtml(h);
+  document.getElementById('payHistoryContinue').addEventListener('click',mostraTipiPagamento);
+  document.getElementById('payHistoryBack').addEventListener('click',cercaAllievoPagamento);
+}
+
+// Funzione originaria: scelta CASH/BONIFICO senza modificare i passaggi successivi.
+function mostraTipiPagamento(){
+  var a=paymentStudent;
+  if(!a) return;
   showModalHtml(
     '<h2>'+esc((a.nome||'')+' '+(a.cognome||''))+'</h2>'+
     '<p style="text-align:center"><b>SCEGLI TIPO PAGAMENTO</b></p>'+
@@ -333,7 +432,6 @@ function scegliAllievoPagamento(a){
     '<button id="payBank" class="choice" type="button">BONIFICO</button>'+
     '<button id="payBackStudent" class="choice secondary" type="button">INDIETRO</button>'
   );
-
   document.getElementById('payCash').addEventListener('click',function(){
     paymentType='CASH';
     scegliIncassatoDa();
@@ -343,7 +441,9 @@ function scegliAllievoPagamento(a){
     paymentCollector='';
     chiediImportoPagamento();
   });
-  document.getElementById('payBackStudent').addEventListener('click',cercaAllievoPagamento);
+  document.getElementById('payBackStudent').addEventListener('click',function(){
+    scegliAllievoPagamento(paymentStudent);
+  });
 }
 
 function scegliIncassatoDa(){
@@ -362,7 +462,7 @@ function scegliIncassatoDa(){
     paymentCollector='BRINO'; chiediImportoPagamento();
   });
   document.getElementById('payBackType').addEventListener('click',function(){
-    scegliAllievoPagamento(paymentStudent);
+    mostraTipiPagamento();
   });
 }
 
@@ -379,7 +479,7 @@ function chiediImportoPagamento(){
   document.getElementById('payAmountOk').addEventListener('click',chiediDataIncassoPagamento);
   document.getElementById('payAmountBack').addEventListener('click',function(){
     if(paymentType==='CASH') scegliIncassatoDa();
-    else scegliAllievoPagamento(paymentStudent);
+    else mostraTipiPagamento();
   });
   document.getElementById('payAmount').addEventListener('keydown',function(e){
     if(e.key==='Enter') chiediDataIncassoPagamento();
