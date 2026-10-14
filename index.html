@@ -877,15 +877,14 @@ function notaApri(){
   noteMode=true;
   if(notePending){notaSchermataSospesa('Operazione da verificare');return;}
   var oggi=notaDataOggi();
-  if(noteContext.data!==oggi){
-    noteContext={tipo:'',orario:'',data:oggi};
-    noteDraft='';
+  if(!noteContext.data){
+    noteContext.data=oggi;
   }
   // Se una sessione e' gia' selezionata nello scanner, usala come proposta.
   if(!noteContext.tipo && selectedActivity)noteContext.tipo=selectedActivity;
   if(!noteContext.orario && selectedTime)noteContext.orario=selectedTime;
-  if(noteContext.tipo && noteContext.orario)notaScrivi();
-  else notaSeleziona();
+  // Mostra sempre la scelta della data all'apertura, per evitare errori.
+  notaSeleziona();
 }
 
 function notaChiudi(){
@@ -894,10 +893,20 @@ function notaChiudi(){
   closeModal();
 }
 
+function notaDataValida(valore){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(valore||'')))return false;
+  var p=valore.split('-');
+  var d=new Date(Number(p[0]),Number(p[1])-1,Number(p[2]));
+  return d.getFullYear()===Number(p[0]) && d.getMonth()===Number(p[1])-1 && d.getDate()===Number(p[2]);
+}
+
 function notaSeleziona(){
   if(notePending){notaSchermataSospesa('Operazione da verificare');return;}
   var h='<h2>NOTE GIORNALIERE</h2><p style="text-align:center">Seleziona la lezione e l\'orario.<br>Rimarranno memorizzati per le note successive.</p>'+
-    '<div class="noteMeta">Maestro: '+esc(nomeMaestroDaTitolo())+'\nData: '+esc(noteContext.data.split('-').reverse().join('/'))+'</div>'+
+    '<div class="noteMeta">Maestro: '+esc(nomeMaestroDaTitolo())+'</div>'+
+    '<p><label for="notaData"><b>DATA DELLA LEZIONE</b></label></p>'+
+    '<input id="notaData" type="date" value="'+esc(noteContext.data||notaDataOggi())+'">'+
+    '<p style="font-size:16px">Puoi scegliere una data passata, odierna o futura.</p>'+
     '<p><b>TIPO DI ATTIVITÀ</b></p><div class="noteGrid">';
   for(var i=0;i<tipiAttivita.length;i++){
     var tipo=tipiAttivita[i];
@@ -929,7 +938,10 @@ function notaSeleziona(){
     });
   });
   document.getElementById('notaVai').addEventListener('click',function(){
+    var dataScelta=document.getElementById('notaData').value;
+    if(!notaDataValida(dataScelta)){alert('Seleziona una data valida.');return;}
     if(!noteContext.tipo || !noteContext.orario){alert('Seleziona attivita e orario.');return;}
+    noteContext.data=dataScelta;
     notaScrivi();
   });
   document.getElementById('notaChiudi').addEventListener('click',notaChiudi);
@@ -943,7 +955,7 @@ function notaScrivi(){
     '<textarea id="notaTesto" class="noteArea" maxlength="2000" placeholder="Scrivi la comunicazione..." spellcheck="true"></textarea>'+
     '<p style="font-size:16px">Le note vengono aggiunte, non modificano i conteggi delle lezioni.</p>'+
     '<button id="notaRiepilogo" class="choice" type="button">CONTINUA</button>'+
-    '<button id="notaCambia" class="choice secondary" type="button">CAMBIA LEZIONE / ORARIO</button>'+
+    '<button id="notaCambia" class="choice secondary" type="button">CAMBIA DATA / LEZIONE / ORARIO</button>'+
     '<button id="notaEsci" class="choice secondary" type="button">TORNA ALLO SCANNER</button>';
   showModalHtml(h);
   document.getElementById('notaTesto').value=noteDraft;
@@ -1062,7 +1074,7 @@ function notaSuccesso(progressivo){
     '<div class="noteMeta">'+esc(nomeMaestroDaTitolo())+'\n'+esc(notaDescrizione())+'</div>'+
     '<p style="text-align:center">Confermata su Google'+(progressivo?' — n. '+esc(progressivo):'')+'</p>'+
     '<button id="notaAltra" class="choice" type="button">ALTRA NOTA (STESSA LEZIONE)</button>'+
-    '<button id="notaCambia2" class="choice secondary" type="button">CAMBIA LEZIONE / ORARIO</button>'+
+    '<button id="notaCambia2" class="choice secondary" type="button">CAMBIA DATA / LEZIONE / ORARIO</button>'+
     '<button id="notaFine" class="choice secondary" type="button">TORNA ALLO SCANNER</button>');
   document.getElementById('notaAltra').addEventListener('click',notaScrivi);
   document.getElementById('notaCambia2').addEventListener('click',notaSeleziona);
