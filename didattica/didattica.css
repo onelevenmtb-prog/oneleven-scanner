@@ -1,0 +1,39 @@
+:root{font-family:Arial,Helvetica,sans-serif;color:#151515;background:#f4f4f4;-webkit-text-size-adjust:100%;font-synthesis:none}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh}
+.app{max-width:650px;margin:0 auto;padding:16px 16px 30px}
+.head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:4px 0 18px}
+.brand{display:flex;align-items:center;gap:10px}.brand strong{font-size:20px;letter-spacing:-.5px;display:block}.brand small{font-size:12px;color:#555;display:block;margin-top:3px}
+.brandmark{display:grid;place-items:center;width:47px;height:47px;background:#111;color:#fff;font-size:23px;font-weight:900;border-radius:12px}
+.flag{border:1px solid #9e2553;color:#9e2553;padding:7px 9px;border-radius:999px;font-weight:700;font-size:11px;white-space:nowrap}
+.notice{background:#fff7de;border:1px solid #e8d38c;border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.45;margin-bottom:17px}
+.notice.warning{margin-top:18px;background:#faf6ec}
+.progress{display:flex;gap:6px;margin-bottom:16px}
+.step{flex:1;text-align:center;background:#e6e6e6;color:#555;border-radius:9px;padding:10px 2px;font-size:12px;font-weight:700}
+.step span{display:block;font-size:11px;margin-top:3px;font-weight:400}
+.step.active{background:#161616;color:#fff}.step.done{background:#e4efe8;color:#1a6a42}
+.panel{background:#fff;border-radius:17px;padding:22px 17px 20px;box-shadow:0 2px 8px #0000000a}
+.hidden{display:none!important}
+h1{font-size:25px;line-height:1.15;margin:0 0 10px;letter-spacing:-.5px}
+.sub{font-size:15px;color:#555;line-height:1.48;margin:0 0 19px}
+label{display:block;font-size:16px;font-weight:700;margin:18px 0 7px}
+label em{font-style:normal;color:#a51959}
+input,select,textarea{width:100%;border:2px solid #c8c8c8;border-radius:11px;background:#fff;color:#151515;font-family:inherit;font-size:18px;padding:13px;min-height:52px}
+select:disabled{color:#999;background:#f4f4f4}
+textarea{font-size:18px;line-height:1.4;resize:vertical;min-height:150px}
+:focus-visible{outline:3px solid #9c2459;outline-offset:2px}
+button{font-family:inherit;border-radius:12px;border:0;min-height:55px;font-size:16px;font-weight:800;cursor:pointer;padding:12px 14px}
+button.primary{width:100%;background:#111;color:#fff;margin-top:12px}
+button.secondary{border:2px solid #222;color:#111;background:#fff}
+button:disabled{opacity:.50;cursor:not-allowed}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+.actions .primary{margin-top:0}
+.hint{font-size:13px;color:#666;line-height:1.4;margin:6px 0}
+.counter{text-align:right}
+.error{font-size:14px;color:#aa162a;font-weight:700;min-height:1em;margin:12px 0 0}
+.explain{background:#f4f4f4;padding:13px;border-radius:11px;line-height:1.5;font-size:14px}
+.summary{margin:0;padding:0}
+.summary .pair{display:grid;grid-template-columns:120px minmax(0,1fr);gap:10px;padding:12px 0;border-bottom:1px solid #eee;font-size:15px;line-height:1.45}
+.summary dt{color:#666}.summary dd{margin:0;font-weight:600;overflow-wrap:anywhere;white-space:pre-wrap}
+footer{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;color:#777;font-size:11px;padding:22px 2px 0}
+@media(max-width:375px){.step span{font-size:10px}.app{padding:12px}.panel{padding:20px 14px}.summary .pair{grid-template-columns:94px 1fr}.brand strong{font-size:17px}}
