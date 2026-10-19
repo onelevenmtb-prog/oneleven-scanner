@@ -1,11 +1,74 @@
-/* ONELEVEN MTB - SOLO DIDATTICA, V3 - ANTEPRIMA NON OPERATIVA.
-   Nessun token, nessun invio HTTP. "Varie ed eventuali" non è gestito qui. */
+/* ONELEVEN MTB - DIDATTICA V3.1 - ANTEPRIMA SOLO LETTURA.
+   Il maestro viene autorizzato da Google prima della lettura dei gruppi.
+   Nessun invio POST e nessun salvataggio didattico abilitato.
+   "Varie ed eventuali" continua a essere gestito nello scanner principale. */
 (function(){
   'use strict';
   const $=id=>document.getElementById(id);
   const tipi=['CLUB','IND','COLL >2','COLL <2','PROVA','DAILY','OUT >2','OUT <2'];
-  const gruppi=window.ONELEVEN_GRUPPI || [];
+  // Indirizzo pubblico dell'API, non contiene password o token personali.
+  const API_URL='https://script.google.com/macros/s/AKfycbypRKLkU0RPV8I9WrHV6N24bDnecyAdB0p1hZT4VrGNKDBH0bVspKZg750s_HwNjxs/exec';
+  const hashParams=new URLSearchParams(location.hash.replace(/^#/,''));
+  const token=hashParams.get('token')||'';
+  // Rimuove il token dalla barra indirizzi appena letto; rimane solo in memoria.
+  if(token){
+    try { history.replaceState(null,'',location.pathname+location.search); }catch(_){ /* file:// */ }
+  }
+  const avviso=document.querySelector('.notice[role="status"]');
+  // Il catalogo incorporato serve SOLO a continuare le prove offline senza token.
+  // Nell'accesso autenticato il catalogo deve arrivare da ANAGRAFICA GRUPPI.
+  let gruppi=token?[]:(window.ONELEVEN_GRUPPI||[]);
   let stage=0;
+
+  function leggiJsonp(params,callback){
+    const callbackName='onelevenDidV3Cb'+Date.now()+'_'+String(++leggiJsonp.count);
+    const script=document.createElement('script');
+    const timer=setTimeout(function(){chiudi();callback(new Error('Risposta Google non arrivata'));},20000);
+    let finito=false;
+    function chiudi(){
+      if(finito)return false;
+      finito=true;clearTimeout(timer);
+      try{delete window[callbackName];}catch(_){window[callbackName]=undefined;}
+      script.remove();
+      return true;
+    }
+    window[callbackName]=function(response){if(chiudi())callback(null,response);};
+    script.onerror=function(){if(chiudi())callback(new Error('Collegamento Google non riuscito'));};
+    const query=new URLSearchParams(Object.assign({},params,{token:token,callback:callbackName}));
+    script.src=API_URL+'?'+query.toString();
+    document.body.appendChild(script);
+  }
+  leggiJsonp.count=0;
+
+  function caricaGruppiGoogle(){
+    if(!token)return; // Anteprima locale senza accesso, sempre non operativa.
+    avviso.textContent='Verifica dell’accesso del maestro e lettura gruppi da Google in corso. Salvataggio ancora disabilitato.';
+    leggiJsonp({azione:'didatticaElencoGruppiV3'},function(errore,risposta){
+      if(errore||!risposta||risposta.ok!==true||!Array.isArray(risposta.gruppi)){
+        avviso.textContent='Accesso o lettura gruppi non disponibile. Non è possibile usare i gruppi online. Nessun dato è stato inviato.';
+        return;
+      }
+      const ids=new Set(),valide=[];
+      for(const r of risposta.gruppi){
+        if(!r||typeof r.id!=='string'||typeof r.nome!=='string'||
+           !/^(MFZ|PIN|OUT)-[A-Z0-9-]{1,70}$/.test(r.id)||
+           !['MFZ','PIN','OUT'].includes(r.sede)||!r.id.startsWith(r.sede+'-')||
+           !r.nome.trim()||ids.has(r.id)){
+          avviso.textContent='Anagrafica gruppi inattesa. Nessuna operazione consentita.';
+          return;
+        }
+        ids.add(r.id);
+        valide.push({id:r.id,sede:r.sede,categoria:String(r.categoria||''),nome:r.nome,attivo:true});
+      }
+      if(valide.length===0||valide.length>100){
+        avviso.textContent='Anagrafica gruppi vuota o inattesa. Nessuna operazione consentita.';
+        return;
+      }
+      gruppi=valide;
+      groups();
+      avviso.textContent='Accesso verificato: '+valide.length+' gruppi attivi letti da Google. Salvataggio ancora disabilitato.';
+    });
+  }
   function dateToday(){
     const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   }
@@ -30,8 +93,13 @@
   function groups(){
     outdoorChange();
     const sede=$('sede').value,sel=$('gruppo');sel.replaceChildren();
-    addOption(sel,'',sede?'Seleziona il gruppo':'Seleziona prima la sede');sel.disabled=!sede;
-    if(sede){gruppi.filter(x=>x.sede===sede&&x.attivo).forEach(g=>addOption(sel,g.id,g.nome));addOption(sel,'OCCASIONALE','Gruppo occasionale');}
+    const catalogoDisponibile=!token||gruppi.length>0;
+    addOption(sel,'',sede?'Seleziona il gruppo':'Seleziona prima la sede');
+    sel.disabled=!sede||!catalogoDisponibile;
+    if(sede&&catalogoDisponibile){
+      gruppi.filter(x=>x.sede===sede&&x.attivo).forEach(g=>addOption(sel,g.id,g.nome));
+      addOption(sel,'OCCASIONALE','Gruppo occasionale');
+    }
     $('occasionaleBox').classList.add('hidden');$('descrizioneOccasionale').value='';
   }
   function occasionale(){
@@ -50,6 +118,7 @@
     const d=data();let msg='';
     if(!validDate(d.data))msg='Seleziona una data valida.';
     else if(!['MFZ','PIN','OUT'].includes(d.sede))msg='Seleziona una sede.';
+    else if(token&&!gruppi.length)msg='Attendi la verifica dell’accesso e la lettura gruppi da Google.';
     else if(d.sede==='OUT'&&(!d.localitaOutdoor||d.localitaOutdoor.length>140))msg='Indica la località della lezione Outdoor (massimo 140 caratteri).';
     else if(!tipi.includes(d.attivita))msg='Seleziona il tipo di attività.';
     else if(!Array.from($('ora').options).some(o=>o.value===d.orario&&!!o.value))msg='Seleziona un orario.';
@@ -84,12 +153,13 @@
   }
   function copyText(){
     const d=data();return ['ONELEVEN MTB — ANTEPRIMA NON REGISTRATA','Data: '+d.data,
-      'Sede: '+(d.sede==='MFZ'?'My Fly Zone':(d.sede==='PIN'?'Pineta Sacchetti':'Outdoor')),'Tipo: '+d.attivita,
-      'Orario: '+d.orario,'Gruppo: '+d.gruppo,'ID gruppo: '+d.idGruppo,
+      'Sede: '+(d.sede==='MFZ'?'My Fly Zone':(d.sede==='PIN'?'Pineta Sacchetti':'Outdoor')),
+      ...(d.sede==='OUT'?['Località Outdoor: '+d.localitaOutdoor]:[]),
+      'Tipo: '+d.attivita,'Orario: '+d.orario,'Gruppo: '+d.gruppo,'ID gruppo: '+d.idGruppo,
       'Attività didattica:\n'+d.didattica].join('\n\n');
   }
   function copyFallback(t){const e=document.createElement('textarea');e.value=t;e.style.position='fixed';e.style.opacity='0';document.body.append(e);e.select();const ok=document.execCommand('copy');e.remove();if(!ok)throw new Error('Copia non riuscita');}
-  populate();groups();
+  populate();groups();caricaGruppiGoogle();
   $('sede').addEventListener('change',groups);
   $('gruppo').addEventListener('change',occasionale);
   $('didattica').addEventListener('input',()=>$('didatticaCounter').textContent=String($('didattica').value.length));
