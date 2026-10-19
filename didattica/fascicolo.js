@@ -8,6 +8,9 @@
     try{history.replaceState(null,'',location.pathname+location.search);}catch(_){}
     $('ritorno').href='index.html#token='+encodeURIComponent(token);
   }
+  $('tornaScanner').addEventListener('click',function(){
+    location.assign('../index.html'+(token?'?token='+encodeURIComponent(token):''));
+  });
   let gruppi=[],nomeMaestro='';let serial=0,caricamento=false;
   function get(params,cb){
     const nome='onelevenFascicolo'+Date.now()+'_'+(++serial);

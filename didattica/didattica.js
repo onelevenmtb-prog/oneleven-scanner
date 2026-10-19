@@ -338,6 +338,20 @@
     aggiornaRegistrazione();
   });
 
+  // Ritorno intenzionale allo scanner. Non salva dati né genera nuove registrazioni.
+  $('tornaScanner').addEventListener('click',function(){
+    const cambiamenti=!!$('sede').value||!!$('attivita').value||!!$('ora').value||
+      !!$('gruppo').value||!!$('localitaOutdoor').value.trim()||
+      !!$('descrizioneOccasionale').value.trim()||!!$('didattica').value.trim();
+    if(inInvio){alert('Invio in corso: attendi la risposta prima di uscire.');return;}
+    if(pending){
+      if(!confirm('Un invio didattico è ancora da verificare. Uscendo, dovrai verificarlo prima di registrare un’altra attività. Tornare allo scanner?'))return;
+    }else if(!completata&&cambiamenti){
+      if(!confirm('La compilazione didattica non è stata salvata. Vuoi uscire e perdere i dati inseriti?'))return;
+    }
+    location.assign('../index.html'+(token?'?token='+encodeURIComponent(token):''));
+  });
+
   $('sede').addEventListener('change',groups);
   $('gruppo').addEventListener('change',occasionale);
   $('didattica').addEventListener('input',()=>$('didatticaCounter').textContent=String($('didattica').value.length));
