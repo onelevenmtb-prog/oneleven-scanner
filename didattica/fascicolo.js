@@ -67,6 +67,6 @@
       $('stato').textContent='Impossibile verificare accesso o gruppi. Fascicolo non disponibile.';return;}
     gruppi=r.gruppi.filter(g=>g&&typeof g.id==='string'&&typeof g.nome==='string'&&['MFZ','PIN','OUT'].includes(g.sede));
     if(!gruppi.length){$('stato').textContent='Anagrafica gruppi non valida.';return;}
-    riempiGruppi();$('cerca').disabled=false;$('stato').textContent='Accesso verificato. Consulta le attività didattiche.';
+    riempiGruppi();$('cerca').disabled=false;$('stato').hidden=true;
   });
 })();
