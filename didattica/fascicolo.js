@@ -2,7 +2,7 @@
 (function(){
   'use strict';
   const $=id=>document.getElementById(id);
-  const API_URL='https://script.google.com/macros/s/AKfycbypRKLkU0RPV8I9WrHV6N24bDnecyAdB0p1hZT4VrGNKDBH0bVspKZg750s_HwNjxs/exec';
+  const API_URL='https://script.google.com/macros/s/AKfycby3R-1Nls1V3JCD-FMQWw6Su10NM_cuqB4_uIPjJ3-WMwspP5XiEaaXnP79F2Qt8OXz/exec';
   const token=new URLSearchParams(location.hash.replace(/^#/,'')).get('token')||'';
   if(token){
     try{history.replaceState(null,'',location.pathname+location.search);}catch(_){}

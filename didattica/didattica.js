@@ -13,7 +13,7 @@
 
   const tipi=['CLUB','IND','COLL >2','COLL <2','PROVA','DAILY','OUT >2','OUT <2'];
   // Indirizzo pubblico dell'API, non contiene password o token personali.
-  const API_URL='https://script.google.com/macros/s/AKfycbypRKLkU0RPV8I9WrHV6N24bDnecyAdB0p1hZT4VrGNKDBH0bVspKZg750s_HwNjxs/exec';
+  const API_URL='https://script.google.com/macros/s/AKfycby3R-1Nls1V3JCD-FMQWw6Su10NM_cuqB4_uIPjJ3-WMwspP5XiEaaXnP79F2Qt8OXz/exec';
   const hashParams=new URLSearchParams(location.hash.replace(/^#/,''));
   const token=hashParams.get('token')||'';
   // Chiave non segreta per separare gli invii sospesi tra i maestri sullo stesso dispositivo.
