@@ -36,6 +36,11 @@
     try { history.replaceState(null,'',location.pathname+location.search); }catch(_){ /* file:// */ }
   }
   const avviso=document.querySelector('.notice[role="status"]');
+  // Mostra caricamento, errori e invii sospesi; nasconde solo la conferma positiva.
+  function mostraAvviso(testo,visibile=true){
+    avviso.textContent=testo;
+    avviso.hidden=!visibile;
+  }
   // Interfaccia coerente fra anteprima locale (senza invio) e sito pubblicato.
   const intro=document.querySelector('#stage-0 .sub');
   const riepilogo=document.querySelector('#stage-2 .sub');
@@ -49,7 +54,7 @@
     ?'L’attività sarà registrata nel REGISTRO DIDATTICA. In caso di interruzione non iniziare un secondo invio: verifica l’ID sospeso.'
     :'ANTEPRIMA LOCALE: invio disabilitato. Per registrare apri la Didattica dal tuo scanner sul sito ufficiale.';
   if(footer)footer.textContent=REGISTRAZIONE_ABILITATA?'Registro didattico attivo':'Anteprima locale: nessun invio';
-  if(!token)avviso.textContent='Accesso maestro mancante. Apri questa pagina dal tuo scanner personale per leggere i gruppi e registrare le attività.';
+  if(!token)mostraAvviso('Accesso maestro mancante. Apri questa pagina dal tuo scanner personale per leggere i gruppi e registrare le attività.');
   // Il catalogo incorporato serve SOLO a continuare le prove offline senza token.
   // Nell'accesso autenticato il catalogo deve arrivare da ANAGRAFICA GRUPPI.
   let gruppi=token?[]:(window.ONELEVEN_GRUPPI||[]);
@@ -82,12 +87,12 @@
 
   function caricaGruppiGoogle(){
     if(!token)return; // Anteprima locale senza accesso, sempre non operativa.
-    avviso.textContent=REGISTRAZIONE_ABILITATA
+    mostraAvviso(REGISTRAZIONE_ABILITATA
       ?'Verifica accesso e gruppi in corso. Solo collaudo locale con attività fittizia.'
-      :'Verifica dell’accesso del maestro e lettura gruppi da Google in corso. Salvataggio disabilitato.';
+      :'Verifica dell’accesso del maestro e lettura gruppi da Google in corso. Salvataggio disabilitato.');
     leggiJsonp({azione:'didatticaElencoGruppiV3'},function(errore,risposta){
       if(errore||!risposta||risposta.ok!==true||!Array.isArray(risposta.gruppi)){
-        avviso.textContent='Accesso o lettura gruppi non disponibile. Non è possibile usare i gruppi online. Nessun dato è stato inviato.';
+        mostraAvviso('Accesso o lettura gruppi non disponibile. Non è possibile usare i gruppi online. Nessun dato è stato inviato.');
         return;
       }
       const ids=new Set(),valide=[];
@@ -96,14 +101,14 @@
            !/^(MFZ|PIN|OUT)-[A-Z0-9-]{1,70}$/.test(r.id)||
            !['MFZ','PIN','OUT'].includes(r.sede)||!r.id.startsWith(r.sede+'-')||
            !r.nome.trim()||ids.has(r.id)){
-          avviso.textContent='Anagrafica gruppi inattesa. Nessuna operazione consentita.';
+          mostraAvviso('Anagrafica gruppi inattesa. Nessuna operazione consentita.');
           return;
         }
         ids.add(r.id);
         valide.push({id:r.id,sede:r.sede,categoria:String(r.categoria||''),nome:r.nome,attivo:true});
       }
       if(valide.length===0||valide.length>100){
-        avviso.textContent='Anagrafica gruppi vuota o inattesa. Nessuna operazione consentita.';
+        mostraAvviso('Anagrafica gruppi vuota o inattesa. Nessuna operazione consentita.');
         return;
       }
       gruppi=valide;
@@ -112,10 +117,10 @@
       $('fascicoloLink').href='fascicolo.html#token='+encodeURIComponent(token);
       aggiornaRegistrazione();
       if(pending) verificaPending();
-      avviso.textContent='Accesso verificato: '+valide.length+' gruppi attivi letti da Google. '+
+      mostraAvviso('Accesso verificato: '+valide.length+' gruppi attivi letti da Google. '+
         (REGISTRAZIONE_ABILITATA
           ? (pending?'Invio precedente in verifica: non creare un altro ID.':'Registrazione didattica disponibile.')
-          :'Anteprima locale: salvataggio disabilitato.');
+          :'Anteprima locale: salvataggio disabilitato.'), !REGISTRAZIONE_ABILITATA || !!pending);
     });
   }
   function dateToday(){
