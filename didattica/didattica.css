@@ -37,3 +37,6 @@ button:disabled{opacity:.50;cursor:not-allowed}
 .summary dt{color:#666}.summary dd{margin:0;font-weight:600;overflow-wrap:anywhere;white-space:pre-wrap}
 footer{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;color:#777;font-size:11px;padding:22px 2px 0}
 @media(max-width:375px){.step span{font-size:10px}.app{padding:12px}.panel{padding:20px 14px}.summary .pair{grid-template-columns:94px 1fr}.brand strong{font-size:17px}}
+
+[hidden]{display:none!important}
+#fascicoloLink{display:block;background:#fff;border:2px solid #111;border-radius:12px;padding:14px;text-align:center;text-decoration:none;color:#111;font-weight:800;margin-bottom:14px}

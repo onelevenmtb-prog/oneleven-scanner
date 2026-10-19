@@ -6,16 +6,17 @@
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex,nofollow">
   <meta name="color-scheme" content="light">
-  <title>Oneleven MTB | Attività didattica (anteprima sola lettura)</title>
+  <title>Oneleven MTB | Attività didattica (preparazione V3.2)</title>
   <link rel="stylesheet" href="didattica.css">
 </head>
 <body>
   <main class="app">
     <header class="head">
       <div class="brand"><span class="brandmark" aria-hidden="true">11</span><div><strong>ONELEVEN MTB</strong><small>Registro attività didattica · 2026/2027</small></div></div>
-      <span class="flag">ANTEPRIMA V3.1</span>
+      <span class="flag">PREPARAZIONE V3.2</span>
     </header>
     <div class="notice" role="status"><strong>Modalità di prova:</strong> nessuna attività viene registrata. Con un accesso personale valido vengono letti soltanto i gruppi attivi da Google; senza accesso si usa il catalogo dimostrativo.</div>
+    <p><a href="fascicolo.html" id="fascicoloLink" hidden>CONSULTA FASCICOLO MAESTRI</a></p>
     <div class="progress" aria-label="Fase di compilazione">
       <span class="step active" data-progress="0">1 <span>Lezione</span></span>
       <span class="step" data-progress="1">2 <span>Didattica</span></span>
@@ -58,14 +59,19 @@
     </section>
     <section class="panel hidden" id="stage-2">
       <h1>Riepilogo didattico</h1>
-      <p class="sub">Controlla i dati. Il salvataggio sarà attivato soltanto dopo i test sul backend.</p>
+      <p class="sub">Controlla i dati. La registrazione sarà disponibile dopo il deployment e il collaudo finale.</p>
       <dl class="summary" id="summary"></dl>
-      <div class="notice warning"><strong>Registrazione disabilitata:</strong> non è stato eseguito nessun invio a Google.</div>
-      <button type="button" class="primary" disabled>REGISTRA ATTIVITÀ · NON ATTIVO</button>
+      <div class="notice warning"><strong>Preparazione V3.2:</strong> invio disabilitato fino all’attivazione finale. Le note esistenti e Excel restano indipendenti.</div>
+      <button type="button" class="primary" id="registraDidattica" disabled>REGISTRAZIONE NON ANCORA ATTIVA</button>
+      <p class="error" id="sendState" aria-live="polite"></p>
+      <div class="actions">
+        <button type="button" class="secondary" id="checkDidattica" hidden>VERIFICA INVIO PRECEDENTE</button>
+        <button type="button" class="secondary" id="retryDidattica" hidden>RIPROVA STESSO ID</button>
+      </div>
       <div class="actions"><button type="button" class="secondary" id="back1">INDIETRO</button><button type="button" class="secondary" id="copy">COPIA RIEPILOGO</button></div>
       <p id="copyResult" class="hint" aria-live="polite"></p>
     </section>
-    <footer><span>ONELEVEN MTB · Anteprima didattica indipendente</span><span>Nessun invio ai registri</span></footer>
+    <footer><span>ONELEVEN MTB · Modulo didattico indipendente</span><span>Registrazione sospesa</span></footer>
   </main>
   <script src="gruppi.js"></script>
   <script src="didattica.js"></script>
