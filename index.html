@@ -888,6 +888,9 @@ function apriMenuNoteOneleven(){
   );
   document.getElementById('noteVarie').addEventListener('click',notaApri);
   document.getElementById('noteDidattica').addEventListener('click',function(){
+    // Passaggio privato al modulo della didattica: il frammento # non arriva
+    // al server GitHub Pages e non viene incluso nella richiesta HTTP.
+    this.href='didattica/index.html#token='+encodeURIComponent(TOKEN);
     noteMode=false;
     closeModal();
   });
