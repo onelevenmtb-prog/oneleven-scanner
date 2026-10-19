@@ -1,14 +1,18 @@
-/* ONELEVEN MTB - DIDATTICA V3.2 - REGISTRAZIONE PREDISPOSTA.
-   Il maestro viene autorizzato da Google prima della lettura dei gruppi.
-   La registrazione si abilita solo dopo collaudo e deployment operativo.
-   "Varie ed eventuali" continua a essere gestito nello scanner principale. */
+/* ONELEVEN MTB - DIDATTICA V3.3 - VERSIONE OPERATIVA PRONTA PER RILASCIO.
+   Registrazione solo nella pagina HTTPS ufficiale, dopo autorizzazione Google.
+   Invii sospesi: ID stabile, verifica server, ripresa con stesso ID.
+   Non memorizza token o testi didattici sul dispositivo.
+   Il resto dello scanner ("Varie ed eventuali", presenze, pagamenti) resta invariato. */
 (function(){
   'use strict';
   const $=id=>document.getElementById(id);
-  // ATTIVAZIONE FINALE: lasciare false finche' il backend non e' stato pubblicato e collaudato.
-  const REGISTRAZIONE_ABILITATA=false;
-  const PENDING_PREFIX='oneleven_didattica_v32_pending_';
-  let pending=null, inInvio=false, completata=false, idCorrente=null;
+  // Si abilita solo nell'URL GitHub Pages ufficiale dopo il rilascio su main.
+  // Il controllo di sicurezza effettivo e' sempre sul server Apps Script.
+  const REGISTRAZIONE_ABILITATA=location.protocol==='https:' &&
+    location.hostname==='onelevenmtb-prog.github.io' &&
+    /^\/oneleven-scanner\/didattica\/(?:index\.html)?$/.test(location.pathname);
+  const PENDING_PREFIX='oneleven_didattica_v33_pending_';
+  let pending=null, inInvio=false, completata=false, idCorrente=null, ricompilazioneSospesa=false;
   function registraErrore(s){$('sendState').textContent=s;}
 
   const tipi=['CLUB','IND','COLL >2','COLL <2','PROVA','DAILY','OUT >2','OUT <2'];
@@ -16,13 +20,36 @@
   const API_URL='https://script.google.com/macros/s/AKfycby3R-1Nls1V3JCD-FMQWw6Su10NM_cuqB4_uIPjJ3-WMwspP5XiEaaXnP79F2Qt8OXz/exec';
   const hashParams=new URLSearchParams(location.hash.replace(/^#/,''));
   const token=hashParams.get('token')||'';
-  // Chiave non segreta per separare gli invii sospesi tra i maestri sullo stesso dispositivo.
-  const PENDING_KEY=PENDING_PREFIX+(token.split('-')[0]||'nessun_accesso').replace(/[^A-Za-z]/g,'').slice(0,30);
+  // Separazione degli ID sospesi per token intero, senza salvarlo in chiaro.
+  // L'hash non sostituisce mai la convalida del token effettuata da Google.
+  function chiaveAccesso(s){
+    let h1=2166136261, h2=0x811c9dc5;
+    for(let i=0;i<s.length;i++){
+      h1=Math.imul(h1^s.charCodeAt(i),16777619);
+      h2=Math.imul(h2^(s.charCodeAt(i)+i),16777619);
+    }
+    return (h1>>>0).toString(16).padStart(8,'0')+(h2>>>0).toString(16).padStart(8,'0');
+  }
+  const PENDING_KEY=PENDING_PREFIX+chiaveAccesso(token);
   // Rimuove il token dalla barra indirizzi appena letto; rimane solo in memoria.
   if(token){
     try { history.replaceState(null,'',location.pathname+location.search); }catch(_){ /* file:// */ }
   }
   const avviso=document.querySelector('.notice[role="status"]');
+  // Interfaccia coerente fra anteprima locale (senza invio) e sito pubblicato.
+  const intro=document.querySelector('#stage-0 .sub');
+  const riepilogo=document.querySelector('#stage-2 .sub');
+  const avvisoRiepilogo=document.querySelector('#stage-2 .notice.warning');
+  const footer=document.querySelector('footer span:last-child');
+  const flag=document.querySelector('.flag');
+  if(flag)flag.textContent=REGISTRAZIONE_ABILITATA?'DIDATTICA':'ANTEPRIMA LOCALE';
+  if(intro)intro.textContent='Scegli sede, attività, orario e gruppo. Il maestro viene identificato dal suo accesso personale. Non inserire dati sensibili degli allievi.';
+  if(riepilogo)riepilogo.textContent='Controlla tutti i dati: la registrazione sara’ effettiva solo dopo la conferma da Google.';
+  if(avvisoRiepilogo)avvisoRiepilogo.textContent=REGISTRAZIONE_ABILITATA
+    ?'L’attività sarà registrata nel REGISTRO DIDATTICA. In caso di interruzione non iniziare un secondo invio: verifica l’ID sospeso.'
+    :'ANTEPRIMA LOCALE: invio disabilitato. Per registrare apri la Didattica dal tuo scanner sul sito ufficiale.';
+  if(footer)footer.textContent=REGISTRAZIONE_ABILITATA?'Registro didattico attivo':'Anteprima locale: nessun invio';
+  if(!token)avviso.textContent='Accesso maestro mancante. Apri questa pagina dal tuo scanner personale per leggere i gruppi e registrare le attività.';
   // Il catalogo incorporato serve SOLO a continuare le prove offline senza token.
   // Nell'accesso autenticato il catalogo deve arrivare da ANAGRAFICA GRUPPI.
   let gruppi=token?[]:(window.ONELEVEN_GRUPPI||[]);
@@ -55,7 +82,9 @@
 
   function caricaGruppiGoogle(){
     if(!token)return; // Anteprima locale senza accesso, sempre non operativa.
-    avviso.textContent='Verifica dell’accesso del maestro e lettura gruppi da Google in corso. Salvataggio ancora disabilitato.';
+    avviso.textContent=REGISTRAZIONE_ABILITATA
+      ?'Verifica accesso e gruppi in corso. Solo collaudo locale con attività fittizia.'
+      :'Verifica dell’accesso del maestro e lettura gruppi da Google in corso. Salvataggio disabilitato.';
     leggiJsonp({azione:'didatticaElencoGruppiV3'},function(errore,risposta){
       if(errore||!risposta||risposta.ok!==true||!Array.isArray(risposta.gruppi)){
         avviso.textContent='Accesso o lettura gruppi non disponibile. Non è possibile usare i gruppi online. Nessun dato è stato inviato.';
@@ -83,7 +112,10 @@
       $('fascicoloLink').href='fascicolo.html#token='+encodeURIComponent(token);
       aggiornaRegistrazione();
       if(pending) verificaPending();
-      avviso.textContent='Accesso verificato: '+valide.length+' gruppi attivi letti da Google. Salvataggio ancora disabilitato.';
+      avviso.textContent='Accesso verificato: '+valide.length+' gruppi attivi letti da Google. '+
+        (REGISTRAZIONE_ABILITATA
+          ? (pending?'Invio precedente in verifica: non creare un altro ID.':'Registrazione didattica disponibile.')
+          :'Anteprima locale: salvataggio disabilitato.');
     });
   }
   function dateToday(){
@@ -160,7 +192,9 @@
     row('Orario',d.orario);row('Gruppo',d.gruppo);row('Attività',d.didattica);
   }
   function setStage(n){
-    if(pending && n<2){registraErrore('Esiste un invio da verificare. Non modificare i dati finche’ non e’ stata confermata la registrazione.');return;}
+    if(pending && n<2 && !ricompilazioneSospesa){
+      registraErrore('Esiste un invio sospeso. Prima verifica la registrazione; poi, se necessario, ricompila mantenendo lo stesso ID.');return;
+    }
     stage=n;for(let i=0;i<3;i++){
       $('stage-'+i).classList.toggle('hidden',i!==n);
       document.querySelector('[data-progress="'+i+'"]').className='step'+(i===n?' active':(i<n?' done':''));
@@ -170,7 +204,7 @@
     window.scrollTo({top:0,behavior:'instant'});
   }
   function copyText(){
-    const d=data();return ['ONELEVEN MTB — ANTEPRIMA NON REGISTRATA','Data: '+d.data,
+    const d=data();return ['ONELEVEN MTB — '+(completata?'ATTIVITÀ REGISTRATA':'RIEPILOGO DA CONFERMARE'),'Data: '+d.data,
       'Sede: '+(d.sede==='MFZ'?'My Fly Zone':(d.sede==='PIN'?'Pineta Sacchetti':'Outdoor')),
       ...(d.sede==='OUT'?['Località Outdoor: '+d.localitaOutdoor]:[]),
       'Tipo: '+d.attivita,'Orario: '+d.orario,'Gruppo: '+d.gruppo,'ID gruppo: '+d.idGruppo,
@@ -186,7 +220,7 @@
   function aggiornaRegistrazione(){
     const b=$('registraDidattica');
     if(completata){b.disabled=true;b.textContent='ATTIVITÀ REGISTRATA';return;}
-    if(!REGISTRAZIONE_ABILITATA){b.disabled=true;b.textContent='REGISTRAZIONE NON ANCORA ATTIVA';return;}
+    if(!REGISTRAZIONE_ABILITATA){b.disabled=true;b.textContent='REGISTRAZIONE DISPONIBILE SOLO SUL SITO';return;}
     b.disabled=!token||!gruppi.length||!!pending||inInvio;
     b.textContent='REGISTRA ATTIVITÀ';
   }
@@ -199,11 +233,14 @@
   }
   function confermata(){
     completata=true;
+    ricompilazioneSospesa=false;
     try{localStorage.removeItem(PENDING_KEY);}catch(_){}
     const id=pending&&pending.idDidattica;
     pending=null;
+    idCorrente=null;
     $('retryDidattica').hidden=true;
     $('checkDidattica').hidden=true;
+    $('nuovaAttivita').hidden=false;
     registraErrore('REGISTRAZIONE CONFERMATA DA GOOGLE. ID '+(id||''));
     aggiornaRegistrazione();
   }
@@ -217,14 +254,29 @@
         confermata();return;
       }
       const id=pending.idDidattica;
-      registraErrore('Registrazione NON confermata. ID '+id+'. Non creare un\u2019altra attività: verifica o riprova con lo STESSO ID.');
+      registraErrore('Registrazione non confermata. ID '+id+'. NON creare un nuovo ID. '+
+        (idCorrente?'Puoi verificare o riprovare con lo stesso ID.':
+        'Se l’attività non risulta registrata, ricompila gli stessi dati mantenendo questo ID.'));
       $('checkDidattica').hidden=false;
-      $('retryDidattica').hidden=!idCorrente;
+      $('retryDidattica').hidden=false;
+      $('retryDidattica').textContent=idCorrente?'RIPROVA STESSO ID':
+        (ricompilazioneSospesa?'RIPROVA STESSO ID':'RICOMPILA INVIO SOSPESO');
       aggiornaRegistrazione();
     });
   }
+  function preparaPayload(d){
+    return {dataLezione:d.data,sede:d.sede,tipoAttivita:d.attivita,
+      orarioLezione:d.orario,idGruppo:d.idGruppo,
+      descrizioneOccasionale:d.descrizioneOccasionale,
+      localitaOutdoor:d.localitaOutdoor,attivitaDidattica:d.didattica};
+  }
   function inviaStessoId(){
-    if(!pending||!idCorrente||inInvio)return;
+    if(!pending||inInvio)return;
+    if(!idCorrente && ricompilazioneSospesa){
+      if(!validLesson()||!validText())return;
+      idCorrente=preparaPayload(data());
+    }
+    if(!idCorrente)return;
     if(!REGISTRAZIONE_ABILITATA||!token||!gruppi.length)return;
     inInvio=true;aggiornaRegistrazione();
     $('retryDidattica').hidden=true;
@@ -242,10 +294,11 @@
     const d=data();
     const id=nuovoIdDidattica();
     if(!id){registraErrore('Impossibile generare un ID sicuro. Nessun invio effettuato.');return;}
-    idCorrente={dataLezione:d.data,sede:d.sede,tipoAttivita:d.attivita,
-      orarioLezione:d.orario,idGruppo:d.idGruppo,
-      descrizioneOccasionale:d.descrizioneOccasionale,
-      localitaOutdoor:d.localitaOutdoor,attivitaDidattica:d.didattica};
+    // Se un'altra scheda ha gia' creato un ID sospeso, blocchiamo il nuovo invio.
+    try{if(localStorage.getItem(PENDING_KEY)){
+      registraErrore('Esiste un invio sospeso su questo dispositivo. Riapri dal tuo scanner e verifica prima di riprovare.');return;
+    }}catch(_){registraErrore('Impossibile verificare la memoria di sicurezza. Nessun invio effettuato.');return;}
+    idCorrente=preparaPayload(d);
     pending={idDidattica:id};
     if(!idSalvato()){pending=null;idCorrente=null;
       registraErrore('Impossibile memorizzare l\u2019ID di sicurezza. Nessun invio effettuato.');return;}
@@ -260,7 +313,30 @@
   }
   $('registraDidattica').addEventListener('click',registra);
   $('checkDidattica').addEventListener('click',verificaPending);
-  $('retryDidattica').addEventListener('click',inviaStessoId);
+  $('retryDidattica').addEventListener('click',function(){
+    if(!pending||inInvio||!token||!gruppi.length)return;
+    if(!idCorrente && !ricompilazioneSospesa){
+      // Il testo non e' mai stato conservato sul dispositivo: ricompilazione manuale.
+      ricompilazioneSospesa=true;
+      registraErrore('Ricompila i dati originali. Il prossimo invio userà lo STESSO ID sospeso: '+pending.idDidattica);
+      setStage(0);
+      $('stage0Error').textContent='INVIO SOSPESO: ricompila gli stessi dati, senza cambiare ID. Quando arrivi al riepilogo premi RIPROVA STESSO ID.';
+      $('retryDidattica').textContent='RIPROVA STESSO ID';
+      return;
+    }
+    inviaStessoId();
+  });
+  $('nuovaAttivita').addEventListener('click',function(){
+    if(!completata||pending||inInvio)return;
+    completata=false;ricompilazioneSospesa=false;idCorrente=null;
+    $('lessonDate').value=dateToday();$('sede').value='';$('attivita').value='';$('ora').value='';
+    $('localitaOutdoor').value='';$('descrizioneOccasionale').value='';$('didattica').value='';
+    $('didatticaCounter').textContent='0';$('stage0Error').textContent='';$('stage1Error').textContent='';
+    $('copyResult').textContent='';registraErrore('');groups();
+    $('nuovaAttivita').hidden=true;
+    setStage(0);
+    aggiornaRegistrazione();
+  });
 
   $('sede').addEventListener('change',groups);
   $('gruppo').addEventListener('change',occasionale);
@@ -271,7 +347,7 @@
   $('back1').addEventListener('click',()=>setStage(1));
   $('copy').addEventListener('click',function(){
     const s=copyText();Promise.resolve().then(()=>navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(s):copyFallback(s))
-      .then(()=>$('copyResult').textContent='Riepilogo copiato: nessuna registrazione effettuata.')
+      .then(()=>$('copyResult').textContent='Riepilogo copiato negli appunti.')
       .catch(()=>$('copyResult').textContent='Impossibile copiare. Per gli appunti usa HTTPS.');
   });
 })();
