@@ -68,7 +68,7 @@
   <button id="paymentBtn" type="button">REGISTRA PAGAMENTO</button>
   <button id="expenseBtn" type="button">REGISTRA SPESA</button>
   <button id="otherIncomeBtn" type="button">ENTRATE VARIE</button>
-  <button id="notesBtn" type="button">NOTE GIORNALIERE</button>
+  <button id="notesBtn" type="button">NOTE</button>
 
   <div id="setupArea" class="setupBox">
     <div class="setupTitle">TIPO DI ATTIVITÀ</div>
@@ -867,6 +867,37 @@ function notaDataOggi(){
 
 function notaDescrizione(){
   return noteContext.tipo+' — '+noteContext.orario+' — '+noteContext.data.split('-').reverse().join('/');
+}
+
+// NOTE: menu di accesso separato. Le funzioni NOTE GIORNALIERE rimangono inalterate.
+// Il percorso didattico e' SOLO un'anteprima, senza autenticazione/salvataggio.
+function apriMenuNoteOneleven(){
+  if(!TOKEN || nomeMaestroDaTitolo()==='Oneleven'){
+    alert('Attendi il riconoscimento del maestro prima di accedere alle note.');
+    return;
+  }
+  noteMode=true; // Sospende le letture QR mentre il menu e' aperto.
+  showModalHtml(
+    '<h2>NOTE ONELEVEN</h2>'+
+    '<p style="text-align:center;font-size:18px">Scegli il percorso da utilizzare.</p>'+
+    '<button id="noteVarie" class="choice" type="button">VARIE ED EVENTUALI</button>'+
+    '<a id="noteDidattica" href="didattica/index.html" target="_blank" rel="noopener noreferrer" '+
+    'style="display:block;box-sizing:border-box;background:#111;color:#fff;text-align:center;text-decoration:none;border-radius:14px;padding:19px 10px;min-height:66px;margin:9px 0;font-size:21px;font-weight:bold">ATTIVITÀ DIDATTICA </a>'+
+    '<p style="font-size:16px;text-align:center">Il salvataggio è disponibile soltanto nella versione online.</p>'+
+    '<button id="noteMenuClose" class="choice secondary" type="button">TORNA ALLO SCANNER</button>'
+  );
+  document.getElementById('noteVarie').addEventListener('click',notaApri);
+  document.getElementById('noteDidattica').addEventListener('click',function(){
+    // Passaggio privato al modulo della didattica: il frammento # non arriva
+    // al server GitHub Pages e non viene incluso nella richiesta HTTP.
+    this.href='didattica/index.html#token='+encodeURIComponent(TOKEN);
+    noteMode=false;
+    closeModal();
+  });
+  document.getElementById('noteMenuClose').addEventListener('click',function(){
+    noteMode=false;
+    closeModal();
+  });
 }
 
 function notaApri(){
@@ -1794,7 +1825,7 @@ document.getElementById('finishBtn').addEventListener('click',finishScan);
 document.getElementById('paymentBtn').addEventListener('click',apriPagamento);
 document.getElementById('expenseBtn').addEventListener('click',apriSpesa);
 document.getElementById('otherIncomeBtn').addEventListener('click',apriEntrataVaria);
-  document.getElementById('notesBtn').addEventListener('click',notaApri);
+  document.getElementById('notesBtn').addEventListener('click',apriMenuNoteOneleven);
 
 buildController();
 render();

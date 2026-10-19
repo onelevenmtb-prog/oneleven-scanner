@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Oneleven MTB | Fascicolo Maestri</title>
+  <link rel="stylesheet" href="didattica.css">
+  <style>
+    .filtri{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .filtri label{font-size:14px;margin:8px 0 6px}
+    .filtri .intero{grid-column:1/-1}
+    .voce{border-bottom:1px solid #ddd;padding:17px 0}
+    .voce h2{font-size:17px;margin:0 0 8px}
+    .voce p{font-size:14px;line-height:1.5;margin:7px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+    .meta{color:#555}
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="head">
+      <div class="brand"><span class="brandmark" aria-hidden="true">11</span><div><strong>ONELEVEN MTB</strong><small>Fascicolo Maestri · 2026/2027</small></div></div>
+      <span class="flag">V3.2 · PREPARAZIONE</span>
+    </header>
+    <div class="notice" id="stato" role="status">Verifica dell'accesso del maestro in corso. Nessun dato viene modificato.</div>
+    <section class="panel">
+      <h1>Fascicolo Maestri</h1>
+      <p class="sub">Consulta le attività didattiche registrate, per data, sede, gruppo e maestro. Solo lettura, nessun collegamento con Excel Scuola.</p>
+      <div class="filtri">
+        <div><label for="da">Dal giorno</label><input type="date" id="da"></div>
+        <div><label for="a">Al giorno</label><input type="date" id="a"></div>
+        <div><label for="sedeFiltro">Sede</label><select id="sedeFiltro"><option value="">Tutte</option><option value="MFZ">My Fly Zone</option><option value="PIN">Pineta Sacchetti</option><option value="OUT">Outdoor</option></select></div>
+        <div><label for="gruppoFiltro">Gruppo</label><select id="gruppoFiltro"><option value="">Tutti</option></select></div>
+        <div class="intero"><label for="maestroFiltro">Maestro (nome esatto, facoltativo)</label><input id="maestroFiltro" type="text" maxlength="80" placeholder="Es. Dario" autocomplete="off"></div>
+      </div>
+      <button id="cerca" class="primary" type="button" disabled>CARICA FASCICOLO</button>
+      <p id="esito" class="hint" aria-live="polite"></p>
+      <div id="risultati" aria-live="polite"></div>
+      <a id="ritorno" href="index.html" class="secondary" style="display:block;text-align:center;margin-top:20px;padding:16px;border-radius:10px;text-decoration:none;border:2px solid #111;color:#111;font-weight:800">TORNA ALLA DIDATTICA</a>
+    </section>
+    <footer><span>ONELEVEN MTB · Accesso riservato</span><span>Ultime 100 attività corrispondenti</span></footer>
+  </main>
+  <script src="fascicolo.js"></script>
+</body>
+</html>

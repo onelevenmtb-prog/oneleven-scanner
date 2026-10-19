@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="color-scheme" content="light">
+  <title>Oneleven MTB | Attività didattica</title>
+  <link rel="stylesheet" href="didattica.css">
+</head>
+<body>
+  <main class="app">
+    <header class="head">
+      <div class="brand"><span class="brandmark" aria-hidden="true">11</span><div><strong>ONELEVEN MTB</strong><small>Registro attività didattica · 2026/2027</small></div></div>
+      <span class="flag">DIDATTICA</span>
+    </header>
+    <div class="notice" role="status">Accesso maestro in verifica. La registrazione è disponibile soltanto dallo scanner autorizzato sul sito Oneleven.</div>
+    <p><a href="fascicolo.html" id="fascicoloLink" hidden>CONSULTA FASCICOLO MAESTRI</a></p>
+    <div class="progress" aria-label="Fase di compilazione">
+      <span class="step active" data-progress="0">1 <span>Lezione</span></span>
+      <span class="step" data-progress="1">2 <span>Didattica</span></span>
+      <span class="step" data-progress="2">3 <span>Riepilogo</span></span>
+    </div>
+    <section class="panel" id="stage-0">
+      <h1>Identifica la lezione</h1>
+      <p class="sub">Scegli sede, attività, orario e gruppo. Il maestro viene riconosciuto tramite il suo accesso personale. Non inserire dati sensibili degli allievi.</p>
+      <label for="lessonDate">Data della lezione <em>*</em></label>
+      <input type="date" id="lessonDate" required>
+      <label for="sede">Sede <em>*</em></label>
+      <select id="sede" required><option value="">Seleziona la sede</option><option value="MFZ">My Fly Zone (MFZ)</option><option value="PIN">Pineta Sacchetti</option><option value="OUT">Outdoor</option></select>
+      <div id="outdoorBox" class="hidden">
+        <label for="localitaOutdoor">Località della lezione Outdoor <em>*</em></label>
+        <input type="text" id="localitaOutdoor" maxlength="140" autocomplete="off" placeholder="Es. Monte Cavo – Rocca di Papa">
+        <p class="hint">Inserisci dove si svolge la lezione. Campo obbligatorio solo per Outdoor.</p>
+      </div>
+      <label for="attivita">Tipo di attività <em>*</em></label>
+      <select id="attivita" required><option value="">Seleziona l'attività</option></select>
+      <label for="ora">Orario inizio <em>*</em></label>
+      <select id="ora" required><option value="">Seleziona l'orario</option></select>
+      <label for="gruppo">Gruppo di lavoro <em>*</em></label>
+      <select id="gruppo" required disabled><option value="">Seleziona prima la sede</option></select>
+      <div id="occasionaleBox" class="hidden">
+        <label for="descrizioneOccasionale">Descrizione del gruppo occasionale <em>*</em></label>
+        <input type="text" id="descrizioneOccasionale" maxlength="120" placeholder="Es. U12 misto, allievi di due gruppi">
+        <p class="hint">Non crea un gruppo permanente nell'anagrafica.</p>
+      </div>
+      <p id="stage0Error" class="error" aria-live="polite"></p>
+      <button type="button" class="primary" id="go1">AVANTI: ATTIVITÀ DIDATTICA</button>
+    </section>
+    <section class="panel hidden" id="stage-1">
+      <h1>Attività didattica</h1>
+      <p class="sub" id="lessonSummary1"></p>
+      <label for="didattica">Lavoro svolto e obiettivi <em>*</em></label>
+      <textarea id="didattica" rows="7" maxlength="2000" placeholder="Descrivi gli esercizi svolti, gli obiettivi e le indicazioni per la lezione successiva."></textarea>
+      <p class="hint counter"><span id="didatticaCounter">0</span>/2000 caratteri</p>
+      <p id="stage1Error" class="error" aria-live="polite"></p>
+      <div class="actions"><button type="button" class="secondary" id="back0">INDIETRO</button><button type="button" class="primary" id="go2">AVANTI: RIEPILOGO</button></div>
+    </section>
+    <section class="panel hidden" id="stage-2">
+      <h1>Riepilogo didattico</h1>
+      <p class="sub">Controlla tutti i dati prima di registrare l’attività.</p>
+      <dl class="summary" id="summary"></dl>
+      <div class="notice warning">L’attività sarà registrata nel REGISTRO DIDATTICA. Se la connessione si interrompe, verifica l’invio precedente: non creare un altro ID.</div>
+      <button type="button" class="primary" id="registraDidattica" disabled>VERIFICA ACCESSO IN CORSO</button>
+      <div class="actions"><button type="button" class="secondary" id="nuovaAttivita" hidden>NUOVA ATTIVITÀ</button></div>
+      <p class="error" id="sendState" aria-live="polite"></p>
+      <div class="actions">
+        <button type="button" class="secondary" id="checkDidattica" hidden>VERIFICA INVIO PRECEDENTE</button>
+        <button type="button" class="secondary" id="retryDidattica" hidden>RIPROVA STESSO ID</button>
+      </div>
+      <div class="actions"><button type="button" class="secondary" id="back1">INDIETRO</button><button type="button" class="secondary" id="copy">COPIA RIEPILOGO</button></div>
+      <p id="copyResult" class="hint" aria-live="polite"></p>
+    </section>
+    <footer><span>ONELEVEN MTB · Modulo didattico indipendente</span><span>Registro didattico Oneleven</span></footer>
+  </main>
+  <script src="gruppi.js"></script>
+  <script src="didattica.js"></script>
+</body>
+</html>
