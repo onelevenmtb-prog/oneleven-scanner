@@ -39,3 +39,16 @@ footer{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;color:#
 [hidden]{display:none!important}
 #fascicoloLink{display:block;background:#fff;border:2px solid #111;border-radius:12px;padding:14px;text-align:center;text-decoration:none;color:#111;font-weight:800;margin-bottom:14px}
 .return-scanner{width:100%;display:block;margin:0 0 17px;text-align:center}
+/* V3.6: ramo PL e schede rider; logo/intestazione identici a Club e Fascicolo. */
+.rider-results{display:grid;gap:6px;margin-top:9px;max-height:240px;overflow-y:auto}
+.rider-result{width:100%;min-height:45px;background:#fff;color:#151515;border:1px solid #bbb;border-radius:9px;text-align:left;font-size:15px;font-weight:600}
+.selected-rider{background:#e4efe8;color:#174c34;padding:11px;border-radius:9px;margin-top:11px;font-weight:700}
+.levels{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0 18px}
+.levels label{display:flex;align-items:center;gap:8px;margin:0;border:2px solid #ddd;border-radius:10px;padding:12px 9px;font-size:14px;font-weight:700;cursor:pointer;min-height:53px}
+.levels input{width:21px;min-height:21px;height:21px;accent-color:#151515;margin:0;padding:0;border:0;border-radius:50%;flex-shrink:0}
+.levels label:has(input:checked){border-color:#111;background:#e4efe8}
+.copy-description{display:block;width:100%;margin-top:10px}
+.fascicolo-mode{display:flex;gap:9px;margin:0 0 17px}
+.fascicolo-mode button{flex:1;min-width:0;min-height:50px}
+.fascicolo-mode button[aria-pressed="true"]{background:#111;color:#fff}
+@media(max-width:375px){.levels{grid-template-columns:1fr}.fascicolo-mode button{font-size:13px}}
