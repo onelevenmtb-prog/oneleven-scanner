@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex,nofollow">
-  <title>Oneleven MTB | Fascicolo Maestri</title>
+  <title>Oneleven MTB | Fascicolo Maestri V3.6</title>
   <link rel="stylesheet" href="didattica.css">
   <style>
     .filtri{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -26,20 +26,39 @@
     <button id="tornaScanner" type="button" class="secondary return-scanner">← TORNA ALLO SCANNER</button>
     <section class="panel">
       <h1>Fascicolo Maestri</h1>
-      <p class="sub">Consulta le attività didattiche registrate, per data, sede, gruppo e maestro. Solo lettura, nessun collegamento con Excel Scuola.</p>
-      <div class="filtri">
-        <div><label for="da">Dal giorno</label><input type="date" id="da"></div>
-        <div><label for="a">Al giorno</label><input type="date" id="a"></div>
-        <div><label for="sedeFiltro">Sede</label><select id="sedeFiltro"><option value="">Tutte</option><option value="MFZ">My Fly Zone</option><option value="PIN">Pineta Sacchetti</option><option value="OUT">Outdoor</option></select></div>
-        <div><label for="gruppoFiltro">Gruppo</label><select id="gruppoFiltro"><option value="">Tutti</option></select></div>
-        <div class="intero"><label for="maestroFiltro">Maestro (nome esatto, facoltativo)</label><input id="maestroFiltro" type="text" maxlength="80" placeholder="Es. Dario" autocomplete="off"></div>
+      <p class="sub">Consulta le attività Club per gruppo oppure le valutazioni PL del singolo allievo. Il Fascicolo è in sola lettura.</p>
+      <div class="fascicolo-mode" role="group" aria-label="Tipo di fascicolo">
+        <button id="vistaGruppi" type="button" class="secondary" aria-pressed="true">GRUPPI CLUB</button>
+        <button id="vistaRider" type="button" class="secondary" aria-pressed="false">SINGOLO RIDER</button>
       </div>
-      <button id="cerca" class="primary" type="button" disabled>CARICA FASCICOLO</button>
-      <p id="esito" class="hint" aria-live="polite"></p>
-      <div id="risultati" aria-live="polite"></div>
+      <div id="gruppiSection">
+        <div class="filtri">
+          <div><label for="da">Dal giorno</label><input type="date" id="da"></div>
+          <div><label for="a">Al giorno</label><input type="date" id="a"></div>
+          <div><label for="sedeFiltro">Sede</label><select id="sedeFiltro"><option value="">Tutte</option><option value="MFZ">My Fly Zone</option><option value="PIN">Pineta Sacchetti</option><option value="OUT">Outdoor</option></select></div>
+          <div><label for="gruppoFiltro">Gruppo</label><select id="gruppoFiltro"><option value="">Tutti</option></select></div>
+          <div class="intero"><label for="maestroFiltro">Maestro (nome esatto, facoltativo)</label><input id="maestroFiltro" type="text" maxlength="80" placeholder="Es. Dario" autocomplete="off"></div>
+        </div>
+        <button id="cerca" class="primary" type="button" disabled>CARICA FASCICOLO CLUB</button>
+        <p id="esito" class="hint" aria-live="polite"></p>
+        <div id="risultati" aria-live="polite"></div>
+      </div>
+      <div id="riderSection" class="hidden">
+        <label for="cercaRiderFascicolo">Cerca allievo per cognome</label>
+        <input id="cercaRiderFascicolo" type="search" maxlength="100" autocomplete="off" placeholder="Inizia a scrivere il cognome">
+        <div id="riderRisultatiFascicolo" class="rider-results" aria-label="Risultati ricerca allievo"></div>
+        <p id="riderSelezionatoFascicolo" class="selected-rider hint" aria-live="polite">Nessun allievo selezionato.</p>
+        <div class="filtri">
+          <div><label for="daPL">Dal giorno</label><input type="date" id="daPL"></div>
+          <div><label for="aPL">Al giorno</label><input type="date" id="aPL"></div>
+        </div>
+        <button id="cercaScheda" class="primary" type="button" disabled>CARICA FASCICOLO RIDER</button>
+        <p id="esitoRider" class="hint" aria-live="polite"></p>
+        <div id="risultatiRider" aria-live="polite"></div>
+      </div>
       <a id="ritorno" href="index.html" class="secondary" style="display:block;text-align:center;margin-top:20px;padding:16px;border-radius:10px;text-decoration:none;border:2px solid #111;color:#111;font-weight:800">TORNA ALLA DIDATTICA</a>
     </section>
-    <footer><span>ONELEVEN MTB · Accesso riservato</span><span>Ultime 100 attività corrispondenti</span></footer>
+    <footer><span>ONELEVEN MTB · Accesso riservato</span><span>Massimo 100 attività per ricerca</span></footer>
   </main>
   <script src="fascicolo.js"></script>
 </body>
