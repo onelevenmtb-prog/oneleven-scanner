@@ -6,7 +6,7 @@
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex,nofollow">
   <meta name="color-scheme" content="light">
-  <title>Oneleven MTB | Attività didattica</title>
+  <title>Oneleven MTB | Attività didattica V3.6</title>
   <link rel="stylesheet" href="didattica.css">
 </head>
 <body>
@@ -24,7 +24,9 @@
     </div>
     <section class="panel" id="stage-0">
       <h1>Identifica la lezione</h1>
-      <p class="sub">Scegli sede, attività, orario e gruppo. Il maestro viene riconosciuto tramite il suo accesso personale. Non inserire dati sensibili degli allievi.</p>
+      <p class="sub">Scegli Club o PL, la sede e l'orario. Per Club indica il gruppo; per PL seleziona l'allievo per cognome.</p>
+      <label for="attivita">Tipo di attività <em>*</em></label>
+      <select id="attivita" required><option value="">Seleziona l'attività</option></select>
       <label for="lessonDate">Data della lezione <em>*</em></label>
       <input type="date" id="lessonDate" required>
       <label for="sede">Sede <em>*</em></label>
@@ -34,16 +36,25 @@
         <input type="text" id="localitaOutdoor" maxlength="140" autocomplete="off" placeholder="Es. Monte Cavo – Rocca di Papa">
         <p class="hint">Inserisci dove si svolge la lezione. Campo obbligatorio solo per Outdoor.</p>
       </div>
-      <label for="attivita">Tipo di attività <em>*</em></label>
-      <select id="attivita" required><option value="">Seleziona l'attività</option></select>
       <label for="ora">Orario inizio <em>*</em></label>
       <select id="ora" required><option value="">Seleziona l'orario</option></select>
-      <label for="gruppo">Gruppo di lavoro <em>*</em></label>
-      <select id="gruppo" required disabled><option value="">Seleziona prima la sede</option></select>
-      <div id="occasionaleBox" class="hidden">
-        <label for="descrizioneOccasionale">Descrizione del gruppo occasionale <em>*</em></label>
-        <input type="text" id="descrizioneOccasionale" maxlength="120" placeholder="Es. U12 misto, allievi di due gruppi">
-        <p class="hint">Non crea un gruppo permanente nell'anagrafica.</p>
+      <div id="clubBox" class="hidden">
+        <label for="gruppo">Gruppo di lavoro <em>*</em></label>
+        <select id="gruppo" disabled><option value="">Seleziona prima la sede</option></select>
+        <div id="occasionaleBox" class="hidden">
+          <label for="descrizioneOccasionale">Descrizione del gruppo occasionale <em>*</em></label>
+          <input type="text" id="descrizioneOccasionale" maxlength="120" placeholder="Es. U12 misto, allievi di due gruppi">
+          <p class="hint">Non crea un gruppo permanente nell'anagrafica.</p>
+        </div>
+      </div>
+      <div id="plBox" class="hidden">
+        <label for="pacchetto">Tipo pacchetto PL <em>*</em></label>
+        <select id="pacchetto"><option value="">Seleziona il pacchetto</option><option value="IND">IND - Individuale</option><option value="FRIENDS">FRIENDS</option></select>
+        <label for="cercaRider">Cerca allievo per cognome <em>*</em></label>
+        <input type="search" id="cercaRider" maxlength="100" placeholder="Inizia a scrivere il cognome" autocomplete="off">
+        <div id="riderRisultati" class="rider-results" aria-label="Risultati ricerca allievo"></div>
+        <p id="riderSelezionato" class="selected-rider hint" aria-live="polite">Nessun allievo selezionato.</p>
+        <p class="hint">Per FRIENDS registra ogni partecipante separatamente. Dopo la conferma puoi riutilizzare la stessa descrizione.</p>
       </div>
       <p id="stage0Error" class="error" aria-live="polite"></p>
       <button type="button" class="primary" id="go1">AVANTI: ATTIVITÀ DIDATTICA</button>
@@ -51,7 +62,17 @@
     <section class="panel hidden" id="stage-1">
       <h1>Attività didattica</h1>
       <p class="sub" id="lessonSummary1"></p>
-      <label for="didattica">Lavoro svolto e obiettivi <em>*</em></label>
+      <div id="livelloBox" class="hidden">
+        <label>Livello tecnico dell'allievo <em>*</em></label>
+        <p class="hint" id="livelloState" aria-live="polite">Caricamento dell'ultimo livello tecnico...</p>
+        <div class="levels" role="radiogroup" aria-label="Livello tecnico dell'allievo">
+          <label><input type="radio" name="livelloTecnico" value="Principiante"> Principiante</label>
+          <label><input type="radio" name="livelloTecnico" value="Intermedio"> Intermedio</label>
+          <label><input type="radio" name="livelloTecnico" value="Avanzato"> Avanzato</label>
+          <label><input type="radio" name="livelloTecnico" value="RaceTeam"> RaceTeam</label>
+        </div>
+      </div>
+      <label for="didattica" id="didatticaLabel">Lavoro svolto e obiettivi <em>*</em></label>
       <textarea id="didattica" rows="7" maxlength="2000" placeholder="Descrivi gli esercizi svolti, gli obiettivi e le indicazioni per la lezione successiva."></textarea>
       <p class="hint counter"><span id="didatticaCounter">0</span>/2000 caratteri</p>
       <p id="stage1Error" class="error" aria-live="polite"></p>
@@ -70,6 +91,7 @@
         <button type="button" class="secondary" id="retryDidattica" hidden>RIPROVA STESSO ID</button>
       </div>
       <div class="actions"><button type="button" class="secondary" id="back1">INDIETRO</button><button type="button" class="secondary" id="copy">COPIA RIEPILOGO</button></div>
+      <button type="button" class="secondary copy-description" id="copyDescription">COPIA SOLO LA DESCRIZIONE</button>
       <p id="copyResult" class="hint" aria-live="polite"></p>
     </section>
     <footer><span>ONELEVEN MTB · Modulo didattico indipendente</span><span>Registro didattico Oneleven</span></footer>
