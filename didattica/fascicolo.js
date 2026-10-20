@@ -1,4 +1,5 @@
-/* ONELEVEN - Fascicolo Maestri V3.2. Sola lettura, nessun salvataggio e nessuna cache locale. */
+/* ONELEVEN - Fascicolo Maestri V3.6. Gruppi Club e singoli rider PL.
+   Sola lettura, nessuna cache persistente e nessuna modifica a Excel. */
 (function(){
   'use strict';
   const $=id=>document.getElementById(id);
@@ -12,6 +13,7 @@
     location.assign('../index.html'+(token?'?token='+encodeURIComponent(token):''));
   });
   let gruppi=[],nomeMaestro='';let serial=0,caricamento=false;
+  let riders=[],ridersCaricati=false,ridersCaricamento=false,riderSelezionato=null,caricamentoPL=false;
   function get(params,cb){
     const nome='onelevenFascicolo'+Date.now()+'_'+(++serial);
     const script=document.createElement('script');let chiuso=false;
@@ -45,6 +47,97 @@
       box.appendChild(div);
     });
   }
+  function normalizza(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();}
+  function azzeraRider(){
+    riderSelezionato=null;
+    $('riderSelezionatoFascicolo').textContent='Nessun allievo selezionato.';
+    $('cercaScheda').disabled=true;
+    $('risultatiRider').replaceChildren();$('esitoRider').textContent='';
+  }
+  function filtraRider(){
+    const box=$('riderRisultatiFascicolo');box.replaceChildren();
+    const q=normalizza($('cercaRiderFascicolo').value);
+    if(!ridersCaricati){if(q)box.textContent='Anagrafica in caricamento.';return;}
+    if(q.length<2){if(q)box.textContent='Scrivi almeno due caratteri del cognome.';return;}
+    const risultati=riders.filter(a=>normalizza(a.cognome).startsWith(q)).slice(0,12);
+    if(!risultati.length){box.textContent='Nessun allievo trovato.';return;}
+    risultati.forEach(a=>{
+      const b=document.createElement('button');b.type='button';b.className='rider-result';
+      b.textContent=a.cognome+' '+a.nome;
+      b.addEventListener('click',()=>{
+        riderSelezionato=a;
+        $('cercaRiderFascicolo').value=a.cognome+' '+a.nome;
+        box.replaceChildren();
+        $('riderSelezionatoFascicolo').textContent='Selezionato: '+a.nome+' '+a.cognome;
+        $('cercaScheda').disabled=false;
+        $('risultatiRider').replaceChildren();$('esitoRider').textContent='';
+      });
+      box.appendChild(b);
+    });
+  }
+  function caricaRiders(){
+    if(!token||ridersCaricati||ridersCaricamento)return;
+    ridersCaricamento=true;
+    $('riderSelezionatoFascicolo').textContent='Caricamento iscritti da Google...';
+    get({azione:'scannerElenco'},(err,r)=>{
+      ridersCaricamento=false;
+      if(err||!r||r.ok!==true||!Array.isArray(r.allievi)){
+        $('riderSelezionatoFascicolo').textContent='Elenco allievi non disponibile. Riapri questa sezione per riprovare.';return;
+      }
+      const ids=new Set(),validi=[];
+      for(const a of r.allievi){
+        if(!a||typeof a.id!=='string'||typeof a.nome!=='string'||
+           typeof a.cognome!=='string'||!a.id.trim()||!a.nome.trim()||!a.cognome.trim())continue;
+        const id=a.id.toUpperCase();if(ids.has(id))continue;ids.add(id);
+        validi.push({id:a.id.trim(),nome:a.nome.trim(),cognome:a.cognome.trim()});
+      }
+      if(!validi.length){$('riderSelezionatoFascicolo').textContent='Anagrafica vuota.';return;}
+      riders=validi.sort((a,b)=>(a.cognome+' '+a.nome).localeCompare(b.cognome+' '+b.nome,'it'));
+      ridersCaricati=true;
+      $('riderSelezionatoFascicolo').textContent='Cerca l’allievo per cognome.';filtraRider();
+    });
+  }
+  function mostraScheda(r){
+    const box=$('risultatiRider');box.replaceChildren();
+    box.appendChild(testo('h2','',r.nome+' '+r.cognome));
+    box.appendChild(testo('p','meta','Livello tecnico attuale: '+(r.livelloTecnico||'Non ancora assegnato')));
+    if(!r.note.length){
+      box.appendChild(testo('p','hint','Nessuna valutazione PL registrata per questo allievo nei giorni selezionati.'));
+      return;
+    }
+    r.note.forEach(n=>{
+      const articolo=testo('article','voce','');
+      articolo.appendChild(testo('h2','',n.dataLezione+' · '+n.orarioLezione+' · '+n.sede));
+      articolo.appendChild(testo('p','meta',n.tipoPacchetto+' · '+n.livelloTecnico+' · '+n.maestro));
+      if(n.localitaOutdoor)articolo.appendChild(testo('p','meta','Località: '+n.localitaOutdoor));
+      articolo.appendChild(testo('p','',n.valutazione));box.appendChild(articolo);
+    });
+  }
+  function caricaScheda(){
+    if(caricamentoPL||!token||!riderSelezionato)return;
+    const idRichiesto=riderSelezionato.id;
+    const da=$('daPL').value,a=$('aPL').value;
+    if(da&&a&&da>a){$('esitoRider').textContent='Intervallo di date non valido.';return;}
+    caricamentoPL=true;$('cercaScheda').disabled=true;
+    $('esitoRider').textContent='Lettura fascicolo in corso...';
+    get({azione:'didatticaPLFascicoloV36',idOneleven:idRichiesto,dataDa:da,dataA:a},(err,r)=>{
+      caricamentoPL=false;
+      $('cercaScheda').disabled=!riderSelezionato;
+      if(!riderSelezionato||riderSelezionato.id!==idRichiesto)return;
+      if(err||!r||r.ok!==true||!Array.isArray(r.note)){
+        $('esitoRider').textContent='Fascicolo PL non disponibile o accesso non autorizzato.';return;
+      }
+      $('esitoRider').textContent=r.note.length+' valutazioni PL trovate (massimo 100).';
+      mostraScheda(r);
+    });
+  }
+  function cambiaVista(pl){
+    $('gruppiSection').classList.toggle('hidden',pl);
+    $('riderSection').classList.toggle('hidden',!pl);
+    $('vistaGruppi').setAttribute('aria-pressed',String(!pl));
+    $('vistaRider').setAttribute('aria-pressed',String(pl));
+    if(pl)caricaRiders();
+  }
   function carica(){
     if(caricamento||!token||!gruppi.length)return;
     if($('da').value && $('a').value && $('da').value>$('a').value){$('esito').textContent='Intervallo di date non valido.';return;}
@@ -61,6 +154,10 @@
   }
   $('sedeFiltro').addEventListener('change',riempiGruppi);
   $('cerca').addEventListener('click',carica);
+  $('vistaGruppi').addEventListener('click',()=>cambiaVista(false));
+  $('vistaRider').addEventListener('click',()=>cambiaVista(true));
+  $('cercaRiderFascicolo').addEventListener('input',()=>{azzeraRider();filtraRider();});
+  $('cercaScheda').addEventListener('click',caricaScheda);
   if(!token){$('stato').textContent='Accesso maestro mancante. Apri il Fascicolo dallo scanner autorizzato.';return;}
   get({azione:'didatticaElencoGruppiV3'},(err,r)=>{
     if(err||!r||r.ok!==true||!Array.isArray(r.gruppi)||r.gruppi.length<1){
