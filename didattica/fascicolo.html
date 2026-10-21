@@ -37,7 +37,22 @@
           <div><label for="a">Al giorno</label><input type="date" id="a"></div>
           <div><label for="sedeFiltro">Sede</label><select id="sedeFiltro"><option value="">Tutte</option><option value="MFZ">My Fly Zone</option><option value="PIN">Pineta Sacchetti</option><option value="OUT">Outdoor</option></select></div>
           <div><label for="gruppoFiltro">Gruppo</label><select id="gruppoFiltro"><option value="">Tutti</option></select></div>
-          <div class="intero"><label for="maestroFiltro">Maestro (nome esatto, facoltativo)</label><input id="maestroFiltro" type="text" maxlength="80" placeholder="Es. Dario" autocomplete="off"></div>
+          <div class="intero">
+            <label for="maestroFiltro">Maestro</label>
+            <select id="maestroFiltro">
+              <option value="">Tutti i maestri</option>
+              <option value="Dario">Dario</option>
+              <option value="Brino">Brino</option>
+              <option value="Pierluigi">Pierluigi</option>
+              <option value="Emiliano">Emiliano</option>
+              <option value="Valerio">Valerio</option>
+              <option value="Monica">Monica</option>
+              <option value="Miriam">Miriam</option>
+              <option value="Alessandra">Alessandra</option>
+              <option value="Francesco">Francesco</option>
+              <option value="Ciccio">Ciccio</option>
+            </select>
+          </div>
         </div>
         <button id="cerca" class="primary" type="button" disabled>CARICA FASCICOLO CLUB</button>
         <p id="esito" class="hint" aria-live="polite"></p>
