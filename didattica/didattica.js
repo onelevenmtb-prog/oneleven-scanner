@@ -1,4 +1,4 @@
-/* ONELEVEN MTB - DIDATTICA V3.6 - CLUB INVARIATO + PL PER SINGOLO RIDER.
+/* ONELEVEN MTB - DIDATTICA V3.7 - CLUB e PL V3.6 invariati + valutazione RIDER senza lezione.
    Registrazione solo nella pagina HTTPS ufficiale, dopo autorizzazione Google.
    Invii sospesi: ID stabile, verifica server, ripresa con stesso ID.
    Non memorizza token o testi didattici sul dispositivo.
@@ -15,7 +15,7 @@
   let pending=null, inInvio=false, completata=false, idCorrente=null, ricompilazioneSospesa=false;
   function registraErrore(s){$('sendState').textContent=s;}
 
-  const tipi=['CLUB','PL'];
+  const tipi=['CLUB','PL','RIDER'];
   const livelli=['Principiante','Intermedio','Avanzato','RaceTeam'];
   let riders=[],ridersCaricati=false,ridersInCaricamento=false,rider=null;
   let livelloCaricato=false,ultimoLivello='',riderRichiesta=0;
@@ -51,7 +51,7 @@
   const footer=document.querySelector('footer span:last-child');
   const flag=document.querySelector('.flag');
   if(flag)flag.textContent=REGISTRAZIONE_ABILITATA?'DIDATTICA':'ANTEPRIMA LOCALE';
-  if(intro)intro.textContent='Scegli Club o PL, la sede e l’orario. Per Club indica il gruppo; per PL seleziona il rider cercando il cognome.';
+  if(intro)intro.textContent='Scegli CLUB o PL per la lezione. Con RIDER registri solo data, allievo, livello e commento: nessuna lezione.';
   if(riepilogo)riepilogo.textContent='Controlla tutti i dati: la registrazione sara’ effettiva solo dopo la conferma da Google.';
   if(avvisoRiepilogo)avvisoRiepilogo.textContent=REGISTRAZIONE_ABILITATA
     ?'La registrazione sarà salvata nel registro didattico corrispondente. In caso di interruzione verifica l’ID sospeso prima di riprovare.'
@@ -205,7 +205,7 @@
       impostaLivello(ultimoLivello);livelloCaricato=true;
       $('livelloState').textContent=ultimoLivello
         ?'Livello precedente: '+ultimoLivello+' (puoi modificarlo).'
-        :'Prima valutazione PL: scegli un livello tecnico.';
+        :'Prima valutazione individuale: scegli un livello tecnico.';
     });
   }
   function caricaRidersGoogle(){
@@ -215,7 +215,7 @@
     leggiJsonp({azione:'scannerElenco'},(err,r)=>{
       ridersInCaricamento=false;
       if(err||!r||r.ok!==true||!Array.isArray(r.allievi)){
-        $('riderSelezionato').textContent='Elenco allievi non disponibile. Riprova a selezionare PL.';
+        $('riderSelezionato').textContent='Elenco allievi non disponibile. Riprova a selezionare PL o RIDER.';
         return;
       }
       const visti=new Set(),elenco=[];
@@ -234,61 +234,78 @@
     });
   }
   function cambiaTipo(){
-    const club=$('attivita').value==='CLUB',pl=$('attivita').value==='PL';
+    const tipo=$('attivita').value;
+    const club=tipo==='CLUB',pl=tipo==='PL',soloRider=tipo==='RIDER';
     $('clubBox').classList.toggle('hidden',!club);
-    $('plBox').classList.toggle('hidden',!pl);
-    if(pl)caricaRidersGoogle();
+    $('plBox').classList.toggle('hidden',!(pl||soloRider));
+    $('pacchettoBox').classList.toggle('hidden',!pl);
+    $('friendsHint').classList.toggle('hidden',!pl);
+    $('sedeOraBox').classList.toggle('hidden',soloRider);
+    $('dataLabel').innerHTML=soloRider?'Data della valutazione <em>*</em>':'Data della lezione <em>*</em>';
+    if(pl||soloRider)caricaRidersGoogle();
     $('stage0Error').textContent='';
   }
   function data(){
     const attivita=$('attivita').value;
     const id=attivita==='CLUB'?$('gruppo').value:'',g=gruppi.find(x=>x.id===id);
     const desc=$('descrizioneOccasionale').value.trim();
-    return {data:$('lessonDate').value,sede:$('sede').value,localitaOutdoor:$('sede').value==='OUT'?$('localitaOutdoor').value.trim():'',attivita:attivita,orario:$('ora').value,
+    const senzaLezione=attivita==='RIDER',individuale=['PL','RIDER'].includes(attivita);
+    return {data:$('lessonDate').value,
+      sede:senzaLezione?'':$('sede').value,
+      localitaOutdoor:!senzaLezione&&$('sede').value==='OUT'?$('localitaOutdoor').value.trim():'',
+      attivita:attivita,orario:senzaLezione?'':$('ora').value,
       idGruppo:id,gruppo:id==='OCCASIONALE'?'Gruppo occasionale: '+desc:(g?g.nome:''),
       descrizioneOccasionale:id==='OCCASIONALE'?desc:'',
-      pacchetto:attivita==='PL'?$('pacchetto').value:'',idOneleven:attivita==='PL'&&rider?rider.id:'',
-      nomeRider:attivita==='PL'&&rider?rider.nome+' '+rider.cognome:'',
-      livello:attivita==='PL'?livelloScelto():'',
+      pacchetto:attivita==='PL'?$('pacchetto').value:'',
+      idOneleven:individuale&&rider?rider.id:'',
+      nomeRider:individuale&&rider?rider.nome+' '+rider.cognome:'',
+      livello:individuale?livelloScelto():'',
       didattica:$('didattica').value.replace(/\r\n?/g,'\n').trim()};
   }
   function validLesson(){
     const d=data();let msg='';
     if(!validDate(d.data))msg='Seleziona una data valida.';
-    else if(!['MFZ','PIN','OUT'].includes(d.sede))msg='Seleziona una sede.';
-    else if(d.sede==='OUT'&&(!d.localitaOutdoor||d.localitaOutdoor.length>140))msg='Indica la località della lezione Outdoor (massimo 140 caratteri).';
     else if(!tipi.includes(d.attivita))msg='Seleziona il tipo di attività.';
-    else if(!Array.from($('ora').options).some(o=>o.value===d.orario&&!!o.value))msg='Seleziona un orario.';
+    else if(d.attivita!=='RIDER'&&!['MFZ','PIN','OUT'].includes(d.sede))msg='Seleziona una sede.';
+    else if(d.attivita!=='RIDER'&&d.sede==='OUT'&&(!d.localitaOutdoor||d.localitaOutdoor.length>140))msg='Indica la località della lezione Outdoor (massimo 140 caratteri).';
+    else if(d.attivita!=='RIDER'&&!Array.from($('ora').options).some(o=>o.value===d.orario&&!!o.value))msg='Seleziona un orario.';
     else if(d.attivita==='CLUB'&&token&&!gruppi.length)msg='Attendi il caricamento dei gruppi.';
     else if(d.attivita==='CLUB'&&d.idGruppo==='OCCASIONALE'&&(!d.descrizioneOccasionale||d.descrizioneOccasionale.length>120))msg='Descrivi il gruppo occasionale (massimo 120 caratteri).';
     else if(d.attivita==='CLUB'&&d.idGruppo!=='OCCASIONALE'&&!gruppi.some(g=>g.id===d.idGruppo&&g.sede===d.sede&&g.attivo))msg='Scegli un gruppo valido per la sede.';
     else if(d.attivita==='PL'&&!['IND','FRIENDS'].includes(d.pacchetto))msg='Seleziona IND o FRIENDS.';
-    else if(d.attivita==='PL'&&!ridersCaricati)msg='Attendi la ricerca degli allievi da Google.';
-    else if(d.attivita==='PL'&&!d.idOneleven)msg='Cerca e seleziona un allievo per cognome.';
-    else if(d.attivita==='PL'&&!livelloCaricato)msg='Attendi il caricamento del livello tecnico del rider.';
+    else if(['PL','RIDER'].includes(d.attivita)&&!ridersCaricati)msg='Attendi la ricerca degli allievi da Google.';
+    else if(['PL','RIDER'].includes(d.attivita)&&!d.idOneleven)msg='Cerca e seleziona un allievo per cognome.';
+    else if(['PL','RIDER'].includes(d.attivita)&&!livelloCaricato)msg='Attendi il caricamento del livello tecnico del rider.';
     $('stage0Error').textContent=msg;return !msg;
   }
   function validText(){
     const t=data().didattica;
-    const levelOk=data().attivita!=='PL'||(livelloCaricato&&livelli.includes(livelloScelto()));
+    const levelOk=!['PL','RIDER'].includes(data().attivita)||(livelloCaricato&&livelli.includes(livelloScelto()));
     $('stage1Error').textContent=!levelOk?'Seleziona il livello tecnico dell’allievo.':
       (!t||t.length>2000)?'Inserisci l’attività didattica (1-2000 caratteri).':'';
     return !!t&&t.length<=2000&&levelOk;
   }
-  function lessonLabel(){const d=data();return [d.data,d.sede==='MFZ'?'My Fly Zone':(d.sede==='PIN'?'Pineta Sacchetti':'Outdoor'),d.attivita,d.orario,
-    d.attivita==='PL'?(d.pacchetto+' · '+d.nomeRider):d.gruppo].filter(Boolean).join(' · ');}
+  function lessonLabel(){
+    const d=data();
+    if(d.attivita==='RIDER')return [d.data,'RIDER',d.nomeRider].filter(Boolean).join(' · ');
+    return [d.data,d.sede==='MFZ'?'My Fly Zone':(d.sede==='PIN'?'Pineta Sacchetti':'Outdoor'),d.attivita,d.orario,
+      d.attivita==='PL'?(d.pacchetto+' · '+d.nomeRider):d.gruppo].filter(Boolean).join(' · ');
+  }
   function row(label,value){
     const p=document.createElement('div');p.className='pair';const dt=document.createElement('dt'),dd=document.createElement('dd');
     dt.textContent=label;dd.textContent=value||'—';p.append(dt,dd);$('summary').append(p);
   }
   function summary(){
     const d=data(),names={MFZ:'My Fly Zone',PIN:'Pineta Sacchetti',OUT:'Outdoor'};$('summary').replaceChildren();
-    row('Data',d.data.split('-').reverse().join('/'));row('Sede',names[d.sede]);
-    if(d.sede==='OUT')row('Località Outdoor',d.localitaOutdoor);row('Tipo',d.attivita);
-    row('Orario',d.orario);
+    row(d.attivita==='RIDER'?'Data valutazione':'Data',d.data.split('-').reverse().join('/'));
+    if(d.attivita!=='RIDER')row('Sede',names[d.sede]);
+    if(d.sede==='OUT')row('Località Outdoor',d.localitaOutdoor);
+    row('Tipo',d.attivita);
+    if(d.attivita!=='RIDER')row('Orario',d.orario);
     if(d.attivita==='CLUB')row('Gruppo',d.gruppo);
-    if(d.attivita==='PL'){row('Pacchetto',d.pacchetto);row('Allievo',d.nomeRider);row('Livello',d.livello);}
-    row(d.attivita==='PL'?'Valutazione':'Attività',d.didattica);
+    if(d.attivita==='PL')row('Pacchetto',d.pacchetto);
+    if(['PL','RIDER'].includes(d.attivita)){row('Allievo',d.nomeRider);row('Livello',d.livello);}
+    row(d.attivita==='RIDER'?'Commento / Skill':(d.attivita==='PL'?'Valutazione':'Attività'),d.didattica);
   }
   function setStage(n){
     if(pending && n<2 && !ricompilazioneSospesa){
@@ -300,9 +317,10 @@
     }
     if(n===1){
       $('lessonSummary1').textContent=lessonLabel();
-      const pl=data().attivita==='PL';
-      $('livelloBox').classList.toggle('hidden',!pl);
-      $('didatticaLabel').textContent=pl?'Valutazione della lezione *':'Lavoro svolto e obiettivi *';
+      const tipo=data().attivita;
+      $('livelloBox').classList.toggle('hidden',!['PL','RIDER'].includes(tipo));
+      $('didatticaLabel').textContent=tipo==='RIDER'?'Commento / Skill *':
+        (tipo==='PL'?'Valutazione della lezione *':'Lavoro svolto e obiettivi *');
     }
     if(n===2){
       summary();aggiornaRegistrazione();
@@ -311,12 +329,16 @@
     window.scrollTo({top:0,behavior:'instant'});
   }
   function copyText(){
-    const d=data();return ['ONELEVEN MTB — '+(completata?'ATTIVITÀ REGISTRATA':'RIEPILOGO DA CONFERMARE'),'Data: '+d.data,
-      'Sede: '+(d.sede==='MFZ'?'My Fly Zone':(d.sede==='PIN'?'Pineta Sacchetti':'Outdoor')),
+    const d=data();return ['ONELEVEN MTB — '+(completata?'ATTIVITÀ REGISTRATA':'RIEPILOGO DA CONFERMARE'),
+      'Data: '+d.data,
+      ...(d.attivita==='RIDER'?[]:['Sede: '+(d.sede==='MFZ'?'My Fly Zone':(d.sede==='PIN'?'Pineta Sacchetti':'Outdoor'))]),
       ...(d.sede==='OUT'?['Località Outdoor: '+d.localitaOutdoor]:[]),
-      'Tipo: '+d.attivita,'Orario: '+d.orario,
-      ...(d.attivita==='CLUB'?['Gruppo: '+d.gruppo]:['Pacchetto: '+d.pacchetto,'Allievo: '+d.nomeRider,'Livello: '+d.livello]),
-      'Attività didattica:\n'+d.didattica].join('\n\n');
+      'Tipo: '+d.attivita,
+      ...(d.attivita==='RIDER'?[]:['Orario: '+d.orario]),
+      ...(d.attivita==='CLUB'?['Gruppo: '+d.gruppo]:
+        (d.attivita==='PL'?['Pacchetto: '+d.pacchetto,'Allievo: '+d.nomeRider,'Livello: '+d.livello]:
+        ['Allievo: '+d.nomeRider,'Livello: '+d.livello])),
+      (d.attivita==='RIDER'?'Commento / Skill:\n':'Attività didattica:\n')+d.didattica].join('\n\n');
   }
   function copyFallback(t){const e=document.createElement('textarea');e.value=t;e.style.position='fixed';e.style.opacity='0';document.body.append(e);e.select();const ok=document.execCommand('copy');e.remove();if(!ok)throw new Error('Copia non riuscita');}
   function nuovoIdDidattica(){
@@ -330,7 +352,7 @@
     if(completata){b.disabled=true;b.textContent='ATTIVITÀ REGISTRATA';return;}
     if(!REGISTRAZIONE_ABILITATA){b.disabled=true;b.textContent='REGISTRAZIONE DISPONIBILE SOLO SUL SITO';return;}
     const d=data();
-    const datiPronti=d.attivita==='PL'?(ridersCaricati&&!!rider&&livelloCaricato):
+    const datiPronti=['PL','RIDER'].includes(d.attivita)?(ridersCaricati&&!!rider&&livelloCaricato):
       d.attivita==='CLUB'&&gruppi.length>0;
     b.disabled=!token||!datiPronti||!!pending||inInvio;
     b.textContent='REGISTRA ATTIVITÀ';
@@ -359,7 +381,7 @@
     if(!pending || inInvio || !token)return;
     inInvio=true;aggiornaRegistrazione();
     registraErrore('Controllo registrazione su Google in corso...');
-    leggiJsonp({azione:pending.tipo==='PL'?'didatticaPLVerificaV36':'didatticaVerificaV3',
+    leggiJsonp({azione:pending.tipo==='CLUB'?'didatticaVerificaV3':'didatticaPLVerificaV36',
       idDidattica:pending.idDidattica},function(err,r){
       inInvio=false;
       if(!err&&r&&r.ok===true&&r.registrata===true&&r.idDidattica===pending.idDidattica){
@@ -377,6 +399,9 @@
     });
   }
   function preparaPayload(d){
+    // RIDER non deve nemmeno INVIARE campi sede/orario/pacchetto.
+    if(d.attivita==='RIDER')return {tipoAttivita:'RIDER',dataLezione:d.data,
+      idOneleven:d.idOneleven,livelloTecnico:d.livello,attivitaDidattica:d.didattica};
     const base={dataLezione:d.data,sede:d.sede,orarioLezione:d.orario,
       localitaOutdoor:d.localitaOutdoor,attivitaDidattica:d.didattica};
     return d.attivita==='PL'?Object.assign(base,{tipoPacchetto:d.pacchetto,
@@ -392,16 +417,20 @@
     }
     if(!idCorrente)return;
     if(!REGISTRAZIONE_ABILITATA||!token)return;
-    if(pending.tipo==='PL'&&(!ridersCaricati||!rider||!livelloCaricato))return;
-    if(pending.tipo!=='PL'&&!gruppi.length)return;
-    if((pending.tipo==='PL')!==!!idCorrente.idOneleven){
+    if(['PL','RIDER'].includes(pending.tipo)&&(!ridersCaricati||!rider||!livelloCaricato))return;
+    if(pending.tipo==='CLUB'&&!gruppi.length)return;
+    if((pending.tipo==='CLUB')!==!idCorrente.idOneleven ||
+      (pending.tipo==='RIDER')!==(idCorrente.tipoAttivita==='RIDER') ||
+      (pending.tipo==='PL')!==!!idCorrente.tipoPacchetto){
       registraErrore('Il tipo di invio non corrisponde all’ID sospeso. Nessun dato inviato.');return;
     }
     inInvio=true;aggiornaRegistrazione();
     $('retryDidattica').hidden=true;
     $('checkDidattica').hidden=true;
     registraErrore('Invio didattica in corso. Attendere la verifica prima di uscire.');
-    const payload=Object.assign({},idCorrente,{azione:pending.tipo==='PL'?'didatticaPLRegistraV36':'didatticaRegistraV3',
+    const azione=pending.tipo==='PL'?'didatticaPLRegistraV36':
+      (pending.tipo==='RIDER'?'didatticaRiderRegistraV37':'didatticaRegistraV3');
+    const payload=Object.assign({},idCorrente,{azione:azione,
       token:token,idDidattica:pending.idDidattica});
     fetch(API_URL,{method:'POST',mode:'no-cors',credentials:'omit',redirect:'follow',
       headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(payload)})
