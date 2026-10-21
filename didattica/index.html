@@ -6,7 +6,7 @@
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex,nofollow">
   <meta name="color-scheme" content="light">
-  <title>Oneleven MTB | Attività didattica V3.6</title>
+  <title>Oneleven MTB | Attività didattica V3.7</title>
   <link rel="stylesheet" href="didattica.css">
 </head>
 <body>
@@ -18,17 +18,18 @@
     <p><a href="fascicolo.html" id="fascicoloLink" hidden>CONSULTA FASCICOLO MAESTRI</a></p>
     <button id="tornaScanner" type="button" class="secondary return-scanner">← TORNA ALLO SCANNER</button>
     <div class="progress" aria-label="Fase di compilazione">
-      <span class="step active" data-progress="0">1 <span>Lezione</span></span>
+      <span class="step active" data-progress="0">1 <span>Attività</span></span>
       <span class="step" data-progress="1">2 <span>Didattica</span></span>
       <span class="step" data-progress="2">3 <span>Riepilogo</span></span>
     </div>
     <section class="panel" id="stage-0">
-      <h1>Identifica la lezione</h1>
-      <p class="sub">Scegli Club o PL, la sede e l'orario. Per Club indica il gruppo; per PL seleziona l'allievo per cognome.</p>
+      <h1>Identifica l’attività</h1>
+      <p class="sub">Scegli Club, PL o Rider. Rider consente una valutazione tecnica anche senza lezione.</p>
       <label for="attivita">Tipo di attività <em>*</em></label>
       <select id="attivita" required><option value="">Seleziona l'attività</option></select>
-      <label for="lessonDate">Data della lezione <em>*</em></label>
+      <label for="lessonDate" id="dataLabel">Data della lezione <em>*</em></label>
       <input type="date" id="lessonDate" required>
+      <div id="sedeOraBox">
       <label for="sede">Sede <em>*</em></label>
       <select id="sede" required><option value="">Seleziona la sede</option><option value="MFZ">My Fly Zone (MFZ)</option><option value="PIN">Pineta Sacchetti</option><option value="OUT">Outdoor</option></select>
       <div id="outdoorBox" class="hidden">
@@ -38,6 +39,7 @@
       </div>
       <label for="ora">Orario inizio <em>*</em></label>
       <select id="ora" required><option value="">Seleziona l'orario</option></select>
+      </div>
       <div id="clubBox" class="hidden">
         <label for="gruppo">Gruppo di lavoro <em>*</em></label>
         <select id="gruppo" disabled><option value="">Seleziona prima la sede</option></select>
@@ -48,13 +50,15 @@
         </div>
       </div>
       <div id="plBox" class="hidden">
-        <label for="pacchetto">Tipo pacchetto PL <em>*</em></label>
-        <select id="pacchetto"><option value="">Seleziona il pacchetto</option><option value="IND">IND - Individuale</option><option value="FRIENDS">FRIENDS</option></select>
+        <div id="pacchettoBox">
+          <label for="pacchetto">Tipo pacchetto PL <em>*</em></label>
+          <select id="pacchetto"><option value="">Seleziona il pacchetto</option><option value="IND">IND - Individuale</option><option value="FRIENDS">FRIENDS</option></select>
+        </div>
         <label for="cercaRider">Cerca allievo per cognome <em>*</em></label>
         <input type="search" id="cercaRider" maxlength="100" placeholder="Inizia a scrivere il cognome" autocomplete="off">
         <div id="riderRisultati" class="rider-results" aria-label="Risultati ricerca allievo"></div>
         <p id="riderSelezionato" class="selected-rider hint" aria-live="polite">Nessun allievo selezionato.</p>
-        <p class="hint">Per FRIENDS registra ogni partecipante separatamente. Dopo la conferma puoi riutilizzare la stessa descrizione.</p>
+        <p id="friendsHint" class="hint">Per FRIENDS registra ogni partecipante separatamente. Dopo la conferma puoi riutilizzare la stessa descrizione.</p>
       </div>
       <p id="stage0Error" class="error" aria-live="polite"></p>
       <button type="button" class="primary" id="go1">AVANTI: ATTIVITÀ DIDATTICA</button>
