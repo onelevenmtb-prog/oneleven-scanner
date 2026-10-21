@@ -1,4 +1,4 @@
-/* ONELEVEN - Fascicolo Maestri V3.6. Gruppi Club e singoli rider PL.
+/* ONELEVEN - Fascicolo Maestri V3.7. Gruppi Club, valutazioni PL e RIDER.
    Sola lettura, nessuna cache persistente e nessuna modifica a Excel. */
 (function(){
   'use strict';
@@ -102,13 +102,18 @@
     box.appendChild(testo('h2','',r.nome+' '+r.cognome));
     box.appendChild(testo('p','meta','Livello tecnico attuale: '+(r.livelloTecnico||'Non ancora assegnato')));
     if(!r.note.length){
-      box.appendChild(testo('p','hint','Nessuna valutazione PL registrata per questo allievo nei giorni selezionati.'));
+      box.appendChild(testo('p','hint','Nessuna valutazione individuale registrata per questo allievo nei giorni selezionati.'));
       return;
     }
     r.note.forEach(n=>{
       const articolo=testo('article','voce','');
-      articolo.appendChild(testo('h2','',n.dataLezione+' · '+n.orarioLezione+' · '+n.sede));
-      articolo.appendChild(testo('p','meta',n.tipoPacchetto+' · '+n.livelloTecnico+' · '+n.maestro));
+      const autonomo=n.tipoPacchetto==='RIDER';
+      articolo.appendChild(testo('h2','',autonomo?
+        n.dataLezione+' · Valutazione RIDER':
+        n.dataLezione+' · '+n.orarioLezione+' · '+n.sede));
+      articolo.appendChild(testo('p','meta',autonomo?
+        'RIDER · '+n.livelloTecnico+' · '+n.maestro:
+        n.tipoPacchetto+' · '+n.livelloTecnico+' · '+n.maestro));
       if(n.localitaOutdoor)articolo.appendChild(testo('p','meta','Località: '+n.localitaOutdoor));
       articolo.appendChild(testo('p','',n.valutazione));box.appendChild(articolo);
     });
@@ -127,7 +132,7 @@
       if(err||!r||r.ok!==true||!Array.isArray(r.note)){
         $('esitoRider').textContent='Fascicolo PL non disponibile o accesso non autorizzato.';return;
       }
-      $('esitoRider').textContent=r.note.length+' valutazioni PL trovate (massimo 100).';
+      $('esitoRider').textContent=r.note.length+' valutazioni individuali trovate (massimo 100).';
       mostraScheda(r);
     });
   }
